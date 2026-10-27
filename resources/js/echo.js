@@ -11,10 +11,10 @@ export function getEcho(config) {
     echo = new Echo({
         authEndpoint: '/broadcasting/auth',
         broadcaster: 'reverb',
-        client: Pusher,
         enabledTransports: ['ws', 'wss'],
         forceTLS: config.scheme === 'https',
         key: config.key,
+        Pusher,
         wsHost: config.host,
         wsPort: config.port,
         wssPort: config.port,
