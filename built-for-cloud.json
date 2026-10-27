@@ -1,0 +1,28 @@
+{
+    "schema_version": 4,
+    "license": "MIT",
+    "php_version": "8.5:1",
+    "resources": [
+        {
+            "kind": "database",
+            "type": "neon_serverless_postgres",
+            "version": "18"
+        },
+        {
+            "kind": "queue",
+            "size": "mq.flex.512mb"
+        }
+    ],
+    "environment_keys": [],
+    "build_steps": [],
+    "post_deploy_steps": [
+        {
+            "command": "migrate",
+            "arguments": [
+                "--force"
+            ],
+            "description": "Create the Draw and Built for Cloud schemas."
+        }
+    ],
+    "headless": false
+}
