@@ -163,7 +163,7 @@ it('rechecks every scene mutation family under the board lock for view and edit 
         'add elements' => fn (User $actor, Board $board): Board => $scenes->addElements($actor, $board, [['id' => 'added', 'type' => 'rectangle', 'version' => 1]]),
         'update elements' => fn (User $actor, Board $board): Board => $scenes->updateElements($actor, $board, [['id' => 'seed', 'x' => 25]]),
         'delete elements' => fn (User $actor, Board $board): Board => $scenes->deleteElements($actor, $board, ['seed']),
-        'clear' => fn (User $actor, Board $board): Board => $scenes->clear($actor, $board),
+        'clear' => $scenes->clear(...),
         'skeleton' => fn (User $actor, Board $board): Board => $scenes->addSkeletons($actor, $board, [['type' => 'rectangle', 'x' => 0, 'y' => 0, 'w' => 20, 'h' => 20]]),
         'mermaid' => fn (User $actor, Board $board): Board => $scenes->addMermaid($actor, $board, 'flowchart LR; A --> B'),
         'slide' => fn (User $actor, Board $board): Board => $scenes->addSlide($actor, $board, 'Test slide', []),

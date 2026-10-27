@@ -24,6 +24,8 @@ use LogicException;
  * @property CarbonInterface|null $expires_at
  * @property-read Board $board
  * @property-read User|null $recipient
+ *
+ * @mixin IdeHelperBoardShare
  */
 #[Fillable(['board_id', 'kind', 'recipient_user_id', 'access', 'expires_at'])]
 class BoardShare extends Model

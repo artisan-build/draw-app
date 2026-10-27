@@ -26372,7 +26372,18 @@ namespace App\Livewire\Boards {
             }
     /**
      */
+    class SharedWithMe extends \Livewire\Component {
+            }
+    /**
+     */
     class Show extends \Livewire\Component {
+            }
+    }
+
+namespace App\Livewire\Shares {
+    /**
+     */
+    class Index extends \Livewire\Component {
             }
     }
 
