@@ -24,7 +24,8 @@ class BoardSceneController extends Controller
         BoardAccess $access,
         BoardSceneService $scenes,
     ): JsonResponse {
-        $boardModel = $access->findEditable($this->user($request), $board);
+        $actor = $this->user($request);
+        $boardModel = $access->findEditable($actor, $board);
 
         /** @var array{elements: array<int, array<string, mixed>>, appState?: array<string, mixed>, files?: array<string, mixed>} $validated */
         $validated = $request->validate([
@@ -34,7 +35,7 @@ class BoardSceneController extends Controller
             'files' => ['sometimes', 'array'],
         ]);
 
-        return $this->response($scenes->saveEditorScene($boardModel, $validated));
+        return $this->response($scenes->saveEditorScene($actor, $boardModel, $validated));
     }
 
     private function user(Request $request): User

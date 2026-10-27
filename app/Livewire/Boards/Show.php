@@ -27,6 +27,15 @@ class Show extends Component
 
         return view('livewire.boards.show', [
             'board' => $board,
+            'canEdit' => $access->editableBy($this->user())->whereKey($board->id)->exists(),
+            'canShare' => $board->creator_id === $this->user()->id,
+            'users' => $board->creator_id === $this->user()->id
+                ? User::query()
+                    ->whereKeyNot($this->user()->id)
+                    ->where('status', 'active')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'email'])
+                : collect(),
         ])->title($board->title);
     }
 

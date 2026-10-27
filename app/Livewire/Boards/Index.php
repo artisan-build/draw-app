@@ -35,7 +35,7 @@ class Index extends Component
     public function render(BoardAccess $access): View
     {
         return view('livewire.boards.index', [
-            'boards' => $access->viewableBy($this->user())->latest('updated_at')->get(),
+            'boards' => $access->ownedBy($this->user())->latest('updated_at')->get(),
         ])->title('Boards');
     }
 

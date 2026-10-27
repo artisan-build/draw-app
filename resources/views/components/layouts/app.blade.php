@@ -9,7 +9,12 @@
                 <a href="{{ route('boards.index') }}" wire:navigate style="color: inherit; font-size: 1.125rem; font-weight: 700; text-decoration: none;">
                     Draw
                 </a>
-                <span style="color: #71717a; font-size: 0.875rem;">{{ auth()->user()?->name }}</span>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <a href="{{ route('boards.index') }}" wire:navigate>Boards</a>
+                    <a href="{{ route('boards.shared') }}" wire:navigate>Shared with me</a>
+                    <a href="{{ route('board-shares.index') }}" wire:navigate>My shares</a>
+                    <span style="color: #71717a; font-size: 0.875rem;">{{ auth()->user()?->name }}</span>
+                </div>
             </nav>
         </header>
 
