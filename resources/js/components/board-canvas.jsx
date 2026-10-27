@@ -1,5 +1,5 @@
 import { Excalidraw } from '@excalidraw/excalidraw';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { BoardSceneController } from '../board-scene-controller.js';
 import { getEcho } from '../echo.js';
@@ -61,6 +61,17 @@ export function BoardCanvas({
     const applyingRemote = useRef(false);
     const controllerRef = useRef(null);
     const remoteFingerprint = useRef(null);
+    const sceneRef = useRef(null);
+
+    const updateStatus = useCallback((nextStatus) => {
+        setStatus((currentStatus) =>
+            currentStatus.state === nextStatus.state &&
+            currentStatus.message === nextStatus.message &&
+            currentStatus.retry === nextStatus.retry
+                ? currentStatus
+                : nextStatus,
+        );
+    }, []);
 
     const fitFrame = useCallback(
         (nextScene) => {
@@ -90,6 +101,7 @@ export function BoardCanvas({
             applyingRemote.current = true;
             remoteFingerprint.current = sceneFingerprint(nextScene);
             apiRef.current = null;
+            sceneRef.current = nextScene;
             setScene(nextScene);
             setSceneRevision(revision);
 
@@ -102,11 +114,60 @@ export function BoardCanvas({
         [],
     );
 
+    const handleExcalidrawApi = useCallback(
+        (api) => {
+            apiRef.current = api;
+
+            if (sceneRef.current) {
+                fitFrame(sceneRef.current);
+            }
+        },
+        [fitFrame],
+    );
+
+    const handleChange = useCallback(
+        (elements, appState, files) => {
+            const nextScene = {
+                appState: safeAppState(appState),
+                elements: [...elements],
+                files,
+            };
+
+            if (!canEdit || applyingRemote.current) {
+                return;
+            }
+
+            if (sceneFingerprint(nextScene) === remoteFingerprint.current) {
+                remoteFingerprint.current = null;
+                return;
+            }
+
+            controllerRef.current?.localChange(nextScene);
+        },
+        [canEdit],
+    );
+
+    const initialData = useMemo(
+        () =>
+            scene
+                ? {
+                      appState: {
+                          ...scene.appState,
+                          viewModeEnabled: !canEdit,
+                          zenModeEnabled: !canEdit,
+                      },
+                      elements: scene.elements,
+                      files: scene.files,
+                  }
+                : null,
+        [canEdit, scene],
+    );
+
     useEffect(() => {
         const controller = new BoardSceneController({
             applyScene,
             fetchScene: () => jsonRequest(sceneUrl),
-            onStatus: setStatus,
+            onStatus: updateStatus,
             saveScene: (payload) => {
                 const socketId = getEcho(reverb).socketId();
 
@@ -127,7 +188,7 @@ export function BoardCanvas({
             controller.destroy();
             controllerRef.current = null;
         };
-    }, [applyScene, reverb, saveUrl, sceneUrl]);
+    }, [applyScene, reverb, saveUrl, sceneUrl, updateStatus]);
 
     useEffect(() => {
         const controller = controllerRef.current;
@@ -163,39 +224,9 @@ export function BoardCanvas({
         <div className="board-canvas" data-testid="board-canvas">
             <Excalidraw
                 key={sceneRevision}
-                excalidrawAPI={(api) => {
-                    apiRef.current = api;
-                    fitFrame(scene);
-                }}
-                initialData={{
-                    appState: {
-                        ...scene.appState,
-                        viewModeEnabled: !canEdit,
-                        zenModeEnabled: !canEdit,
-                    },
-                    elements: scene.elements,
-                    files: scene.files,
-                }}
-                onChange={(elements, appState, files) => {
-                    const nextScene = {
-                        appState: safeAppState(appState),
-                        elements: [...elements],
-                        files,
-                    };
-
-                    if (!canEdit || applyingRemote.current) {
-                        return;
-                    }
-
-                    if (
-                        sceneFingerprint(nextScene) === remoteFingerprint.current
-                    ) {
-                        remoteFingerprint.current = null;
-                        return;
-                    }
-
-                    controllerRef.current?.localChange(nextScene);
-                }}
+                excalidrawAPI={handleExcalidrawApi}
+                initialData={initialData}
+                onChange={handleChange}
                 viewModeEnabled={!canEdit}
                 zenModeEnabled={!canEdit}
             />

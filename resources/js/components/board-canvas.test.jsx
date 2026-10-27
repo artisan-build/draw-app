@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BoardCanvas } from './board-canvas.jsx';
@@ -95,6 +95,35 @@ describe('BoardCanvas', () => {
         expect(excalidrawProps.UIOptions).toBeUndefined();
         expect(echo.private).toHaveBeenCalledWith('boards.board-id');
         await waitFor(() => expect(fetch).toHaveBeenCalledWith('/scene', expect.anything()));
+    });
+
+    it('keeps Excalidraw callbacks stable when save status rerenders the shell', async () => {
+        render(
+            <BoardCanvas
+                {...props}
+                canEdit
+                channelKind="private"
+                channelName="boards.board-id"
+                saveUrl="/save"
+            />,
+        );
+
+        await screen.findByTestId('fake-excalidraw');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        const initialOnChange = excalidrawProps.onChange;
+        const initialApiCallback = excalidrawProps.excalidrawAPI;
+
+        await act(async () => {
+            initialOnChange(
+                [{ id: 'local', type: 'rectangle' }],
+                scene.appState,
+                scene.files,
+            );
+        });
+
+        await screen.findByText('Unsaved changes');
+        expect(excalidrawProps.onChange).toBe(initialOnChange);
+        expect(excalidrawProps.excalidrawAPI).toBe(initialApiCallback);
     });
 
     it('fits the requested frame on initial load and after a newer signal', async () => {
