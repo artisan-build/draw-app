@@ -18,6 +18,8 @@ use Illuminate\Support\Str;
  * @property int $revision
  *
  * @phpstan-type Scene array{elements: array<int, array<string, mixed>>, appState: array<string, mixed>, files: array<string, mixed>}
+ *
+ * @mixin IdeHelperBoard
  */
 #[Fillable(['creator_id', 'title', 'scene'])]
 class Board extends Model
