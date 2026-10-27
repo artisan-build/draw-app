@@ -28,7 +28,7 @@ class BoardSceneController extends Controller
 
         /** @var array{elements: array<int, array<string, mixed>>, appState?: array<string, mixed>, files?: array<string, mixed>} $validated */
         $validated = $request->validate([
-            'elements' => ['required', 'array'],
+            'elements' => ['present', 'array'],
             'elements.*' => ['array'],
             'appState' => ['sometimes', 'array'],
             'files' => ['sometimes', 'array'],
