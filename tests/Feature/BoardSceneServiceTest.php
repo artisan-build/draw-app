@@ -36,22 +36,22 @@ it('locks the board row and merges elements by version then version nonce', func
     });
     $scenes = resolve(BoardSceneService::class);
 
-    $board = $scenes->addElements($board, [
+    $board = $scenes->addElements($board->creator, $board, [
         ['id' => 'shared', 'type' => 'diamond', 'version' => 1, 'versionNonce' => 999],
     ]);
     expect(collect($board->scene['elements'])->firstWhere('id', 'shared')['type'])->toBe('rectangle');
 
-    $board = $scenes->addElements($board, [
+    $board = $scenes->addElements($board->creator, $board, [
         ['id' => 'shared', 'type' => 'diamond', 'version' => 2, 'versionNonce' => 19],
     ]);
     expect(collect($board->scene['elements'])->firstWhere('id', 'shared')['type'])->toBe('rectangle');
 
-    $board = $scenes->addElements($board, [
+    $board = $scenes->addElements($board->creator, $board, [
         ['id' => 'shared', 'type' => 'diamond', 'version' => 2, 'versionNonce' => 21],
     ]);
     expect(collect($board->scene['elements'])->firstWhere('id', 'shared')['type'])->toBe('diamond');
 
-    $board = $scenes->addElements($board, [
+    $board = $scenes->addElements($board->creator, $board, [
         ['id' => 'shared', 'type' => 'text', 'version' => 3, 'versionNonce' => 1],
     ]);
 
@@ -72,21 +72,21 @@ it('updates deletes and clears elements while advancing the revision', function 
     ]);
     $scenes = resolve(BoardSceneService::class);
 
-    $board = $scenes->updateElements($board, [['id' => 'first', 'x' => 42]]);
+    $board = $scenes->updateElements($board->creator, $board, [['id' => 'first', 'x' => 42]]);
     $updated = collect($board->scene['elements'])->firstWhere('id', 'first');
 
     expect($updated['x'])->toBe(42)
         ->and($updated['version'])->toBe(2)
         ->and($board->revision)->toBe(1);
 
-    $board = $scenes->deleteElements($board, ['second']);
+    $board = $scenes->deleteElements($board->creator, $board, ['second']);
     $deleted = collect($board->scene['elements'])->firstWhere('id', 'second');
 
     expect($deleted['isDeleted'])->toBeTrue()
         ->and($deleted['version'])->toBe(5)
         ->and($board->revision)->toBe(2);
 
-    $board = $scenes->clear($board);
+    $board = $scenes->clear($board->creator, $board);
 
     expect($board->scene['elements'])->toBe([])
         ->and($board->revision)->toBe(3);
@@ -95,7 +95,7 @@ it('updates deletes and clears elements while advancing the revision', function 
 it('converts skeletons into Excalidraw elements in PHP', function (): void {
     $board = sceneBoard();
 
-    $board = resolve(BoardSceneService::class)->addSkeletons($board, [
+    $board = resolve(BoardSceneService::class)->addSkeletons($board->creator, $board, [
         ['id' => 'box', 'type' => 'rectangle', 'label' => 'Start', 'x' => 10, 'y' => 20, 'w' => 240, 'h' => 120],
         ['type' => 'arrow', 'start' => ['id' => 'box'], 'x' => 250, 'y' => 80, 'w' => 100, 'h' => 0],
     ]);
@@ -116,6 +116,7 @@ it('converts Mermaid flowcharts into Excalidraw nodes and arrows in PHP', functi
     $board = sceneBoard();
 
     $board = resolve(BoardSceneService::class)->addMermaid(
+        $board->creator,
         $board,
         'flowchart LR; Start[Draft] --> Review{Ready}; Other[Queue] --> Done[Ship]',
     );

@@ -8,6 +8,7 @@ use ArtisanBuild\BuiltForCloud\User;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 /**
@@ -32,6 +33,12 @@ class Board extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creator_id');
+    }
+
+    /** @return HasMany<BoardShare, $this> */
+    public function shares(): HasMany
+    {
+        return $this->hasMany(BoardShare::class);
     }
 
     /** @return array<string, string> */

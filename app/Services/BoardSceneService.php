@@ -5,35 +5,42 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\Board;
+use ArtisanBuild\BuiltForCloud\User;
 use Illuminate\Support\Facades\DB;
 
 /** @phpstan-import-type Scene from Board */
 class BoardSceneService
 {
-    public function __construct(private readonly ExcalidrawConverter $converter) {}
+    public function __construct(
+        private readonly ExcalidrawConverter $converter,
+        private readonly BoardAccess $access,
+    ) {}
 
     /** @param array<int, array<string, mixed>> $skeletons */
-    public function addSkeletons(Board $board, array $skeletons): Board
+    public function addSkeletons(User $actor, Board $board, array $skeletons): Board
     {
-        return $this->addElements($board, $this->converter->convert($skeletons));
+        return $this->addElements($actor, $board, $this->converter->convert($skeletons));
     }
 
-    public function addMermaid(Board $board, string $mermaid): Board
+    public function addMermaid(User $actor, Board $board, string $mermaid): Board
     {
-        $scene = $board->scene;
-        $visible = array_filter($scene['elements'], fn (array $element): bool => ! ($element['isDeleted'] ?? false));
-        $maxY = $visible === [] ? 0 : max(array_map(
-            fn (array $element): float => (float) ($element['y'] ?? 0) + (float) ($element['height'] ?? 0),
-            $visible,
-        ));
+        return $this->mutate($actor, $board, function (array $scene) use ($mermaid): array {
+            $visible = array_filter($scene['elements'], fn (array $element): bool => ! ($element['isDeleted'] ?? false));
+            $maxY = $visible === [] ? 0 : max(array_map(
+                fn (array $element): float => (float) ($element['y'] ?? 0) + (float) ($element['height'] ?? 0),
+                $visible,
+            ));
+            $elements = $this->converter->mermaid($mermaid, 0, $maxY + 160);
+            $scene['elements'] = $this->mergeElements($scene['elements'], $elements);
 
-        return $this->addElements($board, $this->converter->mermaid($mermaid, 0, $maxY + 160));
+            return $scene;
+        });
     }
 
     /** @param array<int, array<string, mixed>> $elements */
-    public function addElements(Board $board, array $elements): Board
+    public function addElements(User $actor, Board $board, array $elements): Board
     {
-        return $this->mutate($board, function (array $scene) use ($elements): array {
+        return $this->mutate($actor, $board, function (array $scene) use ($elements): array {
             $scene['elements'] = $this->mergeElements($scene['elements'], $elements);
 
             return $scene;
@@ -41,9 +48,9 @@ class BoardSceneService
     }
 
     /** @param array<int, array<string, mixed>> $updates */
-    public function updateElements(Board $board, array $updates): Board
+    public function updateElements(User $actor, Board $board, array $updates): Board
     {
-        return $this->mutate($board, function (array $scene) use ($updates): array {
+        return $this->mutate($actor, $board, function (array $scene) use ($updates): array {
             $byId = [];
             foreach ($scene['elements'] as $element) {
                 $elementId = $element['id'] ?? null;
@@ -75,58 +82,61 @@ class BoardSceneService
     }
 
     /** @param array<int, string> $ids */
-    public function deleteElements(Board $board, array $ids): Board
+    public function deleteElements(User $actor, Board $board, array $ids): Board
     {
         return $this->updateElements(
+            $actor,
             $board,
             array_map(fn (string $id): array => ['id' => $id, 'isDeleted' => true], $ids),
         );
     }
 
-    public function clear(Board $board): Board
+    public function clear(User $actor, Board $board): Board
     {
-        return $this->mutate($board, fn (array $scene): array => [...$scene, 'elements' => []]);
+        return $this->mutate($actor, $board, fn (array $scene): array => [...$scene, 'elements' => []]);
     }
 
     /** @param array<int, array<string, mixed>> $skeletons */
-    public function addSlide(Board $board, string $title, array $skeletons): Board
+    public function addSlide(User $actor, Board $board, string $title, array $skeletons): Board
     {
-        $scene = $board->scene;
-        $frames = array_values(array_filter(
-            $scene['elements'],
-            fn (array $element): bool => ($element['type'] ?? null) === 'frame' && ! ($element['isDeleted'] ?? false),
-        ));
-        $x = $frames === [] ? 0 : max(array_map(
-            fn (array $frame): float => (float) $frame['x'] + (float) $frame['width'],
-            $frames,
-        )) + 240;
-        $frame = $this->converter->convert([[
-            'type' => 'frame',
-            'name' => $title,
-            'x' => $x,
-            'y' => 0,
-            'w' => 1920,
-            'h' => 1080,
-            'strokeColor' => '#868e96',
-        ]])[0];
-        $titleElement = $this->converter->convert([[
-            'type' => 'text',
-            'text' => $title,
-            'x' => $x + 80,
-            'y' => 60,
-            'w' => 1760,
-            'h' => 80,
-        ]])[0];
-        $titleElement['frameId'] = $frame['id'];
-        $children = $this->converter->convert($skeletons, $x + 80, 170, $frame['id']);
+        return $this->mutate($actor, $board, function (array $scene) use ($title, $skeletons): array {
+            $frames = array_values(array_filter(
+                $scene['elements'],
+                fn (array $element): bool => ($element['type'] ?? null) === 'frame' && ! ($element['isDeleted'] ?? false),
+            ));
+            $x = $frames === [] ? 0 : max(array_map(
+                fn (array $frame): float => (float) $frame['x'] + (float) $frame['width'],
+                $frames,
+            )) + 240;
+            $frame = $this->converter->convert([[
+                'type' => 'frame',
+                'name' => $title,
+                'x' => $x,
+                'y' => 0,
+                'w' => 1920,
+                'h' => 1080,
+                'strokeColor' => '#868e96',
+            ]])[0];
+            $titleElement = $this->converter->convert([[
+                'type' => 'text',
+                'text' => $title,
+                'x' => $x + 80,
+                'y' => 60,
+                'w' => 1760,
+                'h' => 80,
+            ]])[0];
+            $titleElement['frameId'] = $frame['id'];
+            $children = $this->converter->convert($skeletons, $x + 80, 170, $frame['id']);
+            $scene['elements'] = $this->mergeElements($scene['elements'], [$frame, $titleElement, ...$children]);
 
-        return $this->addElements($board, [$frame, $titleElement, ...$children]);
+            return $scene;
+        });
     }
 
     /** @param array{elements: array<int, array<string, mixed>>, appState?: array<string, mixed>, files?: array<string, mixed>} $incoming */
-    public function saveEditorScene(Board $board, array $incoming): Board
+    public function saveEditorScene(User $actor, Board $board, array $incoming): Board
     {
-        return $this->mutate($board, fn (array $scene): array => [
+        return $this->mutate($actor, $board, fn (array $scene): array => [
             'elements' => $this->mergeElements($scene['elements'], $incoming['elements']),
             'appState' => array_intersect_key(
                 $incoming['appState'] ?? [],
@@ -137,10 +147,11 @@ class BoardSceneService
     }
 
     /** @param callable(Scene): Scene $callback */
-    private function mutate(Board $board, callable $callback): Board
+    private function mutate(User $actor, Board $board, callable $callback): Board
     {
-        return DB::transaction(function () use ($board, $callback): Board {
+        return DB::transaction(function () use ($actor, $board, $callback): Board {
             $locked = Board::query()->lockForUpdate()->whereKey($board->id)->firstOrFail();
+            abort_unless($this->access->editableBy($actor)->whereKey($locked->id)->exists(), 404);
             $locked->scene = $callback($locked->scene);
             $locked->revision++;
             $locked->save();
