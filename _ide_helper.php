@@ -26365,6 +26365,17 @@ namespace Illuminate\View {
             }
     }
 
+namespace App\Livewire\Boards {
+    /**
+     */
+    class Index extends \Livewire\Component {
+            }
+    /**
+     */
+    class Show extends \Livewire\Component {
+            }
+    }
+
 
 namespace  {
     class App extends \Illuminate\Support\Facades\App {}
