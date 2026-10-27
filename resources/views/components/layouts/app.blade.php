@@ -22,6 +22,12 @@
             {{ $slot }}
         </main>
 
+        <footer data-testid="about-excalidraw" style="max-width: 72rem; margin: 0 auto; padding: 0 1.5rem 2rem; color: #71717a; font-size: 0.875rem;">
+            Powered by <a href="https://excalidraw.com" rel="noreferrer" target="_blank">Excalidraw</a>.
+            For richer collaboration and AI tools, visit <a href="https://plus.excalidraw.com" rel="noreferrer" target="_blank">Excalidraw+</a>.
+            Excalidraw is used under its MIT license.
+        </footer>
+
         @fluxScripts
     </body>
 </html>

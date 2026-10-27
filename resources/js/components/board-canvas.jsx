@@ -1,0 +1,226 @@
+import { Excalidraw } from '@excalidraw/excalidraw';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { BoardSceneController } from '../board-scene-controller.js';
+import { getEcho } from '../echo.js';
+import { findRequestedFrame } from '../frame.js';
+
+const safeAppState = (appState) => ({
+    gridModeEnabled: appState.gridModeEnabled,
+    gridSize: appState.gridSize,
+    gridStep: appState.gridStep,
+    viewBackgroundColor: appState.viewBackgroundColor,
+});
+
+const sceneFingerprint = (scene) =>
+    JSON.stringify({
+        appState: safeAppState(scene.appState),
+        elements: scene.elements,
+        files: scene.files,
+    });
+
+async function jsonRequest(url, options = {}) {
+    const response = await fetch(url, {
+        credentials: 'same-origin',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            ...options.headers,
+        },
+        ...options,
+    });
+
+    if (!response.ok) {
+        const error = new Error(`Board request failed with ${response.status}.`);
+        error.status = response.status;
+        throw error;
+    }
+
+    return response.json();
+}
+
+function csrfToken() {
+    return (
+        document.querySelector('meta[name="csrf-token"]')?.content ?? ''
+    );
+}
+
+export function BoardCanvas({
+    canEdit,
+    channelKind,
+    channelName,
+    frame,
+    reverb,
+    saveUrl,
+    sceneUrl,
+}) {
+    const [scene, setScene] = useState(null);
+    const [status, setStatus] = useState({ state: 'loading' });
+    const apiRef = useRef(null);
+    const applyingRemote = useRef(false);
+    const controllerRef = useRef(null);
+    const remoteFingerprint = useRef(null);
+
+    const fitFrame = useCallback(
+        (nextScene) => {
+            if (canEdit || !apiRef.current) {
+                return;
+            }
+
+            const selectedFrame = findRequestedFrame(
+                nextScene.elements,
+                frame,
+            );
+
+            if (selectedFrame) {
+                requestAnimationFrame(() =>
+                    apiRef.current?.scrollToContent(selectedFrame, {
+                        animate: false,
+                        fitToViewport: true,
+                    }),
+                );
+            }
+        },
+        [canEdit, frame],
+    );
+
+    const applyScene = useCallback(
+        (nextScene) => {
+            applyingRemote.current = true;
+            remoteFingerprint.current = sceneFingerprint(nextScene);
+            setScene(nextScene);
+
+            if (apiRef.current) {
+                apiRef.current.updateScene({
+                    appState: nextScene.appState,
+                    elements: nextScene.elements,
+                });
+                apiRef.current.addFiles(Object.values(nextScene.files));
+                fitFrame(nextScene);
+            }
+
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    applyingRemote.current = false;
+                });
+            });
+        },
+        [fitFrame],
+    );
+
+    useEffect(() => {
+        const controller = new BoardSceneController({
+            applyScene,
+            fetchScene: () => jsonRequest(sceneUrl),
+            onStatus: setStatus,
+            saveScene: (payload) =>
+                jsonRequest(saveUrl, {
+                    body: JSON.stringify(payload),
+                    headers: { 'X-CSRF-TOKEN': csrfToken() },
+                    method: 'PUT',
+                }),
+        });
+        controllerRef.current = controller;
+        void controller.load();
+
+        return () => {
+            controller.destroy();
+            controllerRef.current = null;
+        };
+    }, [applyScene, saveUrl, sceneUrl]);
+
+    useEffect(() => {
+        const controller = controllerRef.current;
+
+        if (!controller) {
+            return undefined;
+        }
+
+        const echo = getEcho(reverb);
+        const channel =
+            channelKind === 'private'
+                ? echo.private(channelName)
+                : echo.channel(channelName);
+
+        channel.listen('.board.updated', ({ revision }) => {
+            void controller.receiveRevision(revision);
+        });
+
+        return () => echo.leave(channelName);
+    }, [channelKind, channelName, reverb]);
+
+    if (!scene) {
+        return (
+            <div className="board-canvas-message" data-testid="board-loading">
+                {status.state === 'error'
+                    ? status.message
+                    : 'Loading board…'}
+            </div>
+        );
+    }
+
+    return (
+        <div className="board-canvas" data-testid="board-canvas">
+            <Excalidraw
+                excalidrawAPI={(api) => {
+                    apiRef.current = api;
+                    api.addFiles(Object.values(scene.files));
+                    fitFrame(scene);
+                }}
+                initialData={{
+                    appState: {
+                        ...scene.appState,
+                        viewModeEnabled: !canEdit,
+                        zenModeEnabled: !canEdit,
+                    },
+                    elements: scene.elements,
+                    files: scene.files,
+                }}
+                onChange={(elements, appState, files) => {
+                    const nextScene = {
+                        appState: safeAppState(appState),
+                        elements: [...elements],
+                        files,
+                    };
+
+                    if (!canEdit || applyingRemote.current) {
+                        return;
+                    }
+
+                    if (
+                        sceneFingerprint(nextScene) === remoteFingerprint.current
+                    ) {
+                        remoteFingerprint.current = null;
+                        return;
+                    }
+
+                    controllerRef.current?.localChange(nextScene);
+                }}
+                viewModeEnabled={!canEdit}
+                zenModeEnabled={!canEdit}
+            />
+
+            {canEdit && (
+                <div
+                    aria-live="polite"
+                    className={`board-save-status board-save-status--${status.state}`}
+                    data-testid="board-save-status"
+                >
+                    {status.state === 'pending' && 'Unsaved changes'}
+                    {status.state === 'saving' && 'Saving…'}
+                    {status.state === 'saved' && 'Saved'}
+                    {status.state === 'error' && (
+                        <>
+                            <span>{status.message}</span>{' '}
+                            {status.retry && (
+                                <button type="button" onClick={status.retry}>
+                                    Retry
+                                </button>
+                            )}
+                        </>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}

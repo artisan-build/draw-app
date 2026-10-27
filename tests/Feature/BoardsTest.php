@@ -104,6 +104,7 @@ it('lets the creator list open fetch and mutate their board', function (): void 
         ->assertJsonPath('revision', 0);
 
     $this->putJson("/boards/{$board->id}/scene", [
+        'revision' => 0,
         'elements' => [],
     ])
         ->assertOk()
@@ -111,6 +112,7 @@ it('lets the creator list open fetch and mutate their board', function (): void 
         ->assertJsonPath('revision', 1);
 
     $this->putJson("/boards/{$board->id}/scene", [
+        'revision' => 1,
         'elements' => [[
             'id' => 'browser-element',
             'type' => 'rectangle',

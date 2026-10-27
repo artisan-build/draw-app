@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Enums\BoardShareKind;
+use App\Events\BoardUpdated;
 use App\Models\Board;
 use ArtisanBuild\BuiltForCloud\User;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
 /** @phpstan-import-type Scene from Board */
 class BoardSceneService
@@ -134,28 +137,50 @@ class BoardSceneService
     }
 
     /** @param array{elements: array<int, array<string, mixed>>, appState?: array<string, mixed>, files?: array<string, mixed>} $incoming */
-    public function saveEditorScene(User $actor, Board $board, array $incoming): Board
+    public function saveEditorScene(User $actor, Board $board, array $incoming, int $expectedRevision): Board
     {
         return $this->mutate($actor, $board, fn (array $scene): array => [
-            'elements' => $this->mergeElements($scene['elements'], $incoming['elements']),
+            'elements' => $incoming['elements'],
             'appState' => array_intersect_key(
                 $incoming['appState'] ?? [],
                 array_flip(['viewBackgroundColor', 'gridSize', 'gridStep', 'gridModeEnabled']),
             ),
-            'files' => [...$scene['files'], ...($incoming['files'] ?? [])],
-        ]);
+            'files' => $incoming['files'] ?? [],
+        ], $expectedRevision);
     }
 
     /** @param callable(Scene): Scene $callback */
-    private function mutate(User $actor, Board $board, callable $callback): Board
+    private function mutate(User $actor, Board $board, callable $callback, ?int $expectedRevision = null): Board
     {
-        return DB::transaction(function () use ($actor, $board, $callback): Board {
+        return DB::transaction(function () use ($actor, $board, $callback, $expectedRevision): Board {
             $locked = Board::query()->lockForUpdate()->whereKey($board->id)->firstOrFail();
             abort_unless($this->access->editableBy($actor)->whereKey($locked->id)->exists(), 404);
+            abort_if(
+                $expectedRevision !== null && $locked->revision !== $expectedRevision,
+                409,
+                'The board changed before this edit could be saved.',
+            );
             $locked->scene = $callback($locked->scene);
             $locked->revision++;
             $locked->save();
             $locked->refresh();
+
+            $linkShareIds = $locked->shares()
+                ->where('kind', BoardShareKind::Link->value)
+                ->where(fn ($query) => $query
+                    ->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now()))
+                ->pluck('id')
+                ->map(fn (mixed $id): string => (string) $id)
+                ->all();
+
+            DB::afterCommit(function () use ($locked, $linkShareIds): void {
+                try {
+                    BoardUpdated::dispatch($locked->id, $locked->revision, $linkShareIds);
+                } catch (Throwable $exception) {
+                    report($exception);
+                }
+            });
 
             return $locked;
         });

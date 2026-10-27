@@ -125,7 +125,7 @@ it('lists direct and team shares only under Shared with me and grants board read
         'recipient_user_id' => $recipient->id,
         'access' => ShareAccess::Edit,
     ]);
-    $this->putJson("/boards/{$editableBoard->id}/scene", ['elements' => []])
+    $this->putJson("/boards/{$editableBoard->id}/scene", ['revision' => 0, 'elements' => []])
         ->assertOk()
         ->assertJsonPath('revision', 1);
 
@@ -159,7 +159,7 @@ it('rechecks every scene mutation family under the board lock for view and edit 
     $editor = sharingUser('Mutation editor');
     $scenes = resolve(BoardSceneService::class);
     $operations = [
-        'editor save' => fn (User $actor, Board $board): Board => $scenes->saveEditorScene($actor, $board, ['elements' => []]),
+        'editor save' => fn (User $actor, Board $board): Board => $scenes->saveEditorScene($actor, $board, ['elements' => []], 0),
         'add elements' => fn (User $actor, Board $board): Board => $scenes->addElements($actor, $board, [['id' => 'added', 'type' => 'rectangle', 'version' => 1]]),
         'update elements' => fn (User $actor, Board $board): Board => $scenes->updateElements($actor, $board, [['id' => 'seed', 'x' => 25]]),
         'delete elements' => fn (User $actor, Board $board): Board => $scenes->deleteElements($actor, $board, ['seed']),
@@ -305,6 +305,9 @@ it('serves anonymous revocable signed links with expiry frame compatibility and 
             ->assertOk()
             ->assertSee('data-testid="public-viewer-mount"', false)
             ->assertSee('data-can-edit="false"', false)
+            ->assertSee('data-channel-kind="public"', false)
+            ->assertSee('data-channel-name="link-shares.'.$share->id.'"', false)
+            ->assertDontSee('data-channel-name="boards.'.$board->id.'"', false)
             ->assertDontSee('<header', false)
             ->assertDontSee('Shared with me');
         $this->get($url.'&frame=slide-1')->assertOk();
