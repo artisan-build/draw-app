@@ -19,6 +19,7 @@ class PublicBoardShareController extends Controller
 
         return view('board-shares.public', [
             'board' => $shareModel->board,
+            'share' => $shareModel,
             'sceneUrl' => $shareModel->signedUrl('board-shares.public.scene'),
         ]);
     }

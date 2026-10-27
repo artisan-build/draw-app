@@ -6,13 +6,19 @@
 
     <div
         data-testid="editor-mount"
+        data-board-canvas
         data-board-id="{{ $board->id }}"
         data-scene-url="{{ route('boards.scene.show', $board) }}"
+        data-save-url="{{ $canEdit ? route('boards.scene.update', $board) : '' }}"
         data-can-edit="{{ $canEdit ? 'true' : 'false' }}"
-        style="display: grid; min-height: 32rem; place-items: center; border: 1px dashed #a1a1aa; border-radius: 0.75rem; background: #ffffff; color: #71717a;"
-    >
-        <span>Editor mount</span>
-    </div>
+        data-channel-kind="private"
+        data-channel-name="boards.{{ $board->id }}"
+        data-reverb-key="{{ config('broadcasting.connections.reverb.key') }}"
+        data-reverb-host="{{ config('broadcasting.connections.reverb.options.host') }}"
+        data-reverb-port="{{ config('broadcasting.connections.reverb.options.port') }}"
+        data-reverb-scheme="{{ config('broadcasting.connections.reverb.options.scheme') }}"
+        style="height: 70vh; border: 1px solid #d4d4d8; border-radius: 0.75rem;"
+    ></div>
 
     @if ($canShare)
         <section data-testid="board-share-create" style="display: grid; gap: 1rem; margin-top: 2rem;">
