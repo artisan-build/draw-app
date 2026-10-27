@@ -140,4 +140,75 @@ describe('BoardSceneController', () => {
         );
         vi.useRealTimers();
     });
+
+    it('keeps a queued edit when its own broadcast arrives before the save response', async () => {
+        vi.useFakeTimers();
+        let finishFirstSave;
+        const saveScene = vi
+            .fn()
+            .mockImplementationOnce(
+                () =>
+                    new Promise((resolve) => {
+                        finishFirstSave = () => resolve(payload(2, 'first'));
+                    }),
+            )
+            .mockResolvedValueOnce(payload(3, 'second'));
+        const { controller, fetchScene } = makeController({ saveScene });
+
+        await controller.load();
+        controller.localChange(payload(1, 'first').scene);
+        await vi.advanceTimersByTimeAsync(25);
+        controller.localChange(payload(1, 'second').scene);
+        await vi.advanceTimersByTimeAsync(25);
+
+        expect(await controller.receiveRevision(2)).toBe(true);
+        expect(fetchScene).toHaveBeenCalledTimes(1);
+
+        finishFirstSave();
+        await vi.runAllTimersAsync();
+
+        expect(saveScene).toHaveBeenCalledTimes(2);
+        expect(saveScene).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                elements: [{ id: 'second' }],
+                revision: 2,
+            }),
+        );
+        expect(fetchScene).toHaveBeenCalledTimes(1);
+        vi.useRealTimers();
+    });
+
+    it('retries the newer complete pending snapshot after an in-flight save fails', async () => {
+        vi.useFakeTimers();
+        const firstSave = Promise.withResolvers();
+        const saveScene = vi
+            .fn()
+            .mockReturnValueOnce(firstSave.promise)
+            .mockResolvedValueOnce(payload(2, 'second'));
+        const { controller, onStatus } = makeController({ saveScene });
+
+        await controller.load();
+        controller.localChange(payload(1, 'first').scene);
+        await vi.advanceTimersByTimeAsync(25);
+        controller.localChange(payload(1, 'second').scene);
+        await vi.advanceTimersByTimeAsync(25);
+
+        firstSave.reject(new Error('offline'));
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(onStatus).toHaveBeenLastCalledWith(
+            expect.objectContaining({ state: 'error' }),
+        );
+        expect(await controller.retry()).toBe(true);
+        expect(saveScene).toHaveBeenCalledTimes(2);
+        expect(saveScene).toHaveBeenLastCalledWith(
+            expect.objectContaining({
+                elements: [{ id: 'second' }],
+                revision: 1,
+            }),
+        );
+        expect(onStatus).toHaveBeenLastCalledWith({ state: 'saved' });
+        vi.useRealTimers();
+    });
 });

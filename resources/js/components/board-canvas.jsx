@@ -22,12 +22,12 @@ const sceneFingerprint = (scene) =>
 async function jsonRequest(url, options = {}) {
     const response = await fetch(url, {
         credentials: 'same-origin',
+        ...options,
         headers: {
             Accept: 'application/json',
             'Content-Type': 'application/json',
             ...options.headers,
         },
-        ...options,
     });
 
     if (!response.ok) {
@@ -55,6 +55,7 @@ export function BoardCanvas({
     sceneUrl,
 }) {
     const [scene, setScene] = useState(null);
+    const [sceneRevision, setSceneRevision] = useState(null);
     const [status, setStatus] = useState({ state: 'loading' });
     const apiRef = useRef(null);
     const applyingRemote = useRef(false);
@@ -85,19 +86,12 @@ export function BoardCanvas({
     );
 
     const applyScene = useCallback(
-        (nextScene) => {
+        (nextScene, revision) => {
             applyingRemote.current = true;
             remoteFingerprint.current = sceneFingerprint(nextScene);
+            apiRef.current = null;
             setScene(nextScene);
-
-            if (apiRef.current) {
-                apiRef.current.updateScene({
-                    appState: nextScene.appState,
-                    elements: nextScene.elements,
-                });
-                apiRef.current.addFiles(Object.values(nextScene.files));
-                fitFrame(nextScene);
-            }
+            setSceneRevision(revision);
 
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
@@ -105,7 +99,7 @@ export function BoardCanvas({
                 });
             });
         },
-        [fitFrame],
+        [],
     );
 
     useEffect(() => {
@@ -113,12 +107,18 @@ export function BoardCanvas({
             applyScene,
             fetchScene: () => jsonRequest(sceneUrl),
             onStatus: setStatus,
-            saveScene: (payload) =>
-                jsonRequest(saveUrl, {
+            saveScene: (payload) => {
+                const socketId = getEcho(reverb).socketId();
+
+                return jsonRequest(saveUrl, {
                     body: JSON.stringify(payload),
-                    headers: { 'X-CSRF-TOKEN': csrfToken() },
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken(),
+                        ...(socketId ? { 'X-Socket-ID': socketId } : {}),
+                    },
                     method: 'PUT',
-                }),
+                });
+            },
         });
         controllerRef.current = controller;
         void controller.load();
@@ -127,7 +127,7 @@ export function BoardCanvas({
             controller.destroy();
             controllerRef.current = null;
         };
-    }, [applyScene, saveUrl, sceneUrl]);
+    }, [applyScene, reverb, saveUrl, sceneUrl]);
 
     useEffect(() => {
         const controller = controllerRef.current;
@@ -162,9 +162,9 @@ export function BoardCanvas({
     return (
         <div className="board-canvas" data-testid="board-canvas">
             <Excalidraw
+                key={sceneRevision}
                 excalidrawAPI={(api) => {
                     apiRef.current = api;
-                    api.addFiles(Object.values(scene.files));
                     fitFrame(scene);
                 }}
                 initialData={{

@@ -307,7 +307,7 @@ it('serves anonymous revocable signed links with expiry frame compatibility and 
             ->assertSee('data-can-edit="false"', false)
             ->assertSee('data-channel-kind="public"', false)
             ->assertSee('data-channel-name="link-shares.'.$share->id.'"', false)
-            ->assertDontSee('data-channel-name="boards.'.$board->id.'"', false)
+            ->assertDontSee($board->id, false)
             ->assertDontSee('<header', false)
             ->assertDontSee('Shared with me');
         $this->get($url.'&frame=slide-1')->assertOk();

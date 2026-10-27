@@ -142,6 +142,46 @@ it('rejects stale editor snapshots without overwriting a newer clear', function 
         ->and($board->fresh()->scene['elements'])->toBe([]);
 });
 
+it('marks the Excalidraw credit and includes its required destinations and license notice', function (): void {
+    $creator = realtimeUser('Credit creator');
+    $board = realtimeBoard($creator);
+
+    $this->actingAs($creator)->withSession(realtimeSession($creator));
+    $response = $this->get("/boards/{$board->id}")
+        ->assertOk()
+        ->assertSee('data-testid="about-excalidraw"', false);
+
+    preg_match(
+        '/<footer[^>]*data-testid="about-excalidraw"[^>]*>(.*?)<\/footer>/s',
+        $response->getContent(),
+        $credit,
+    );
+
+    expect($credit[1] ?? '')
+        ->toContain('Powered by')
+        ->toContain('href="https://excalidraw.com"')
+        ->toContain('href="https://plus.excalidraw.com"')
+        ->toContain('MIT license');
+});
+
+it('excludes the socket that caused an editor save from its revision broadcast', function (): void {
+    Event::fake([BoardUpdated::class]);
+    $creator = realtimeUser('Socket exclusion creator');
+    $board = realtimeBoard($creator);
+
+    $this->actingAs($creator)->withSession(realtimeSession($creator));
+    $this->withHeader('X-Socket-ID', '1234.5678')
+        ->putJson("/boards/{$board->id}/scene", [
+            'revision' => 0,
+            'elements' => [],
+        ])->assertOk();
+
+    Event::assertDispatched(
+        BoardUpdated::class,
+        fn (BoardUpdated $event): bool => $event->socket === '1234.5678',
+    );
+});
+
 it('broadcasts an immediate revision-only signal on private and live opaque link channels', function (): void {
     Event::fake([BoardUpdated::class]);
     $creator = realtimeUser('Broadcast creator');

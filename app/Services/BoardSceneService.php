@@ -176,7 +176,9 @@ class BoardSceneService
 
             DB::afterCommit(function () use ($locked, $linkShareIds): void {
                 try {
-                    event(new BoardUpdated($locked->id, $locked->revision, $linkShareIds));
+                    $event = new BoardUpdated($locked->id, $locked->revision, $linkShareIds);
+                    $event->dontBroadcastToCurrentUser();
+                    event($event);
                 } catch (Throwable $exception) {
                     report($exception);
                 }

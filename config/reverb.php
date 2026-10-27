@@ -2,12 +2,19 @@
 
 declare(strict_types=1);
 
+$localSeed = (string) (env('APP_KEY') ?: 'draw-local');
+$localKey = substr(hash('sha256', $localSeed.':reverb-key'), 0, 32);
+$localSecret = hash('sha256', $localSeed.':reverb-secret');
+$localAppId = substr(hash('sha256', $localSeed.':reverb-app'), 0, 16);
+$appOrigin = parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST);
+$appOrigin = is_string($appOrigin) && $appOrigin !== '' ? $appOrigin : 'localhost';
+
 return [
     'default' => env('REVERB_SERVER', 'reverb'),
 
     'servers' => [
         'reverb' => [
-            'host' => env('REVERB_SERVER_HOST', '0.0.0.0'),
+            'host' => env('REVERB_SERVER_HOST', '127.0.0.1'),
             'port' => env('REVERB_SERVER_PORT', 8080),
             'path' => env('REVERB_SERVER_PATH', ''),
             'hostname' => env('REVERB_HOST', '127.0.0.1'),
@@ -34,21 +41,21 @@ return [
     'apps' => [
         'provider' => 'config',
         'apps' => [[
-            'key' => env('REVERB_APP_KEY', 'draw-local-key'),
-            'secret' => env('REVERB_APP_SECRET', 'draw-local-secret'),
-            'app_id' => env('REVERB_APP_ID', 'draw-local'),
+            'key' => env('REVERB_APP_KEY', $localKey),
+            'secret' => env('REVERB_APP_SECRET', $localSecret),
+            'app_id' => env('REVERB_APP_ID', $localAppId),
             'options' => [
                 'host' => env('REVERB_HOST', '127.0.0.1'),
                 'port' => env('REVERB_PORT', 8080),
                 'scheme' => env('REVERB_SCHEME', 'http'),
                 'useTLS' => env('REVERB_SCHEME', 'http') === 'https',
             ],
-            'allowed_origins' => ['*'],
+            'allowed_origins' => [$appOrigin],
             'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
             'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
             'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),
             'max_message_size' => env('REVERB_APP_MAX_MESSAGE_SIZE', 10_000),
-            'accept_client_events_from' => env('REVERB_APP_ACCEPT_CLIENT_EVENTS_FROM', 'members'),
+            'accept_client_events_from' => env('REVERB_APP_ACCEPT_CLIENT_EVENTS_FROM', 'none'),
             'rate_limiting' => [
                 'enabled' => env('REVERB_APP_RATE_LIMITING_ENABLED', false),
                 'max_attempts' => env('REVERB_APP_RATE_LIMIT_MAX_ATTEMPTS', 60),

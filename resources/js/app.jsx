@@ -6,7 +6,7 @@ import { createRoot } from 'react-dom/client';
 
 import { BoardCanvas } from './components/board-canvas.jsx';
 
-const roots = new WeakMap();
+const roots = new Map();
 
 function mountBoardCanvas(element) {
     if (roots.has(element)) {
@@ -41,6 +41,11 @@ function mountBoardCanvases() {
         .forEach((element) => mountBoardCanvas(element));
 }
 
+function unmountBoardCanvases() {
+    roots.forEach((root) => root.unmount());
+    roots.clear();
+}
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', mountBoardCanvases, {
         once: true,
@@ -50,3 +55,4 @@ if (document.readyState === 'loading') {
 }
 
 document.addEventListener('livewire:navigated', mountBoardCanvases);
+document.addEventListener('livewire:navigating', unmountBoardCanvases);

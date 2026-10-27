@@ -19,6 +19,7 @@ export class BoardSceneController {
         this.pending = null;
         this.failed = null;
         this.inFlight = false;
+        this.deferredRevision = null;
     }
 
     async load() {
@@ -53,6 +54,15 @@ export class BoardSceneController {
             return false;
         }
 
+        if (this.inFlight) {
+            this.deferredRevision = Math.max(
+                this.deferredRevision ?? revision,
+                revision,
+            );
+
+            return true;
+        }
+
         this.cancelLocalWork();
 
         try {
@@ -69,17 +79,21 @@ export class BoardSceneController {
     }
 
     async retry() {
-        if (!this.failed) {
+        const retryable = this.pending ?? this.failed;
+
+        if (!retryable) {
             return false;
         }
 
-        if (this.failed.baseRevision !== this.revision) {
+        if (retryable.baseRevision !== this.revision) {
+            this.pending = null;
             this.failed = null;
             return this.load();
         }
 
-        this.pending = this.failed;
+        this.pending = retryable;
         this.failed = null;
+        this.clearTimer();
 
         return this.flush();
     }
@@ -88,6 +102,7 @@ export class BoardSceneController {
         this.clearTimer();
         this.pending = null;
         this.failed = null;
+        this.deferredRevision = null;
         this.epoch += 1;
     }
 
@@ -122,6 +137,12 @@ export class BoardSceneController {
 
             if (payload.revision > this.revision) {
                 this.revision = payload.revision;
+            }
+
+            const deferredRevision = this.takeDeferredRevision();
+
+            if (deferredRevision !== null && deferredRevision > this.revision) {
+                return this.receiveRevision(deferredRevision);
             }
 
             if (this.pending?.epoch === request.epoch) {
@@ -175,6 +196,7 @@ export class BoardSceneController {
         this.clearTimer();
         this.pending = null;
         this.failed = null;
+        this.deferredRevision = null;
         this.epoch += 1;
     }
 
@@ -192,5 +214,12 @@ export class BoardSceneController {
                 this.debounceMs,
             );
         }
+    }
+
+    takeDeferredRevision() {
+        const revision = this.deferredRevision;
+        this.deferredRevision = null;
+
+        return revision;
     }
 }

@@ -5,6 +5,7 @@ import { BoardCanvas } from './board-canvas.jsx';
 import { findRequestedFrame } from '../frame.js';
 
 let excalidrawProps;
+let excalidrawInstance = 0;
 const excalidrawApi = {
     addFiles: vi.fn(),
     scrollToContent: vi.fn(),
@@ -15,15 +16,28 @@ const echo = {
     channel: vi.fn(() => channel),
     leave: vi.fn(),
     private: vi.fn(() => channel),
+    socketId: vi.fn(() => 'socket-123'),
 };
 
-vi.mock('@excalidraw/excalidraw', () => ({
-    Excalidraw: (props) => {
-        excalidrawProps = props;
-        props.excalidrawAPI(excalidrawApi);
-        return <div data-testid="fake-excalidraw" />;
-    },
-}));
+vi.mock('@excalidraw/excalidraw', async () => {
+    const { useState } = await import('react');
+
+    return {
+        Excalidraw: (props) => {
+            const [instance] = useState(() => ++excalidrawInstance);
+
+            excalidrawProps = props;
+            props.excalidrawAPI(excalidrawApi);
+
+            return (
+                <div
+                    data-instance={instance}
+                    data-testid="fake-excalidraw"
+                />
+            );
+        },
+    };
+});
 
 vi.mock('../echo.js', () => ({ getEcho: () => echo }));
 
@@ -44,6 +58,7 @@ const props = {
 
 beforeEach(() => {
     excalidrawProps = null;
+    excalidrawInstance = 0;
     vi.clearAllMocks();
     fetch.mockResolvedValue({
         json: () => Promise.resolve({ revision: 1, scene }),
@@ -127,6 +142,60 @@ describe('BoardCanvas', () => {
         );
     });
 
+    it('remounts Excalidraw so remote snapshots replace removed app state and files', async () => {
+        const initialScene = {
+            appState: {
+                gridModeEnabled: true,
+                viewBackgroundColor: '#ffeeee',
+            },
+            elements: [{ id: 'initial', type: 'rectangle' }],
+            files: { old: { id: 'old', mimeType: 'image/png' } },
+        };
+        const replacementScene = {
+            appState: {},
+            elements: [],
+            files: {},
+        };
+        fetch
+            .mockResolvedValueOnce({
+                json: () =>
+                    Promise.resolve({ revision: 1, scene: initialScene }),
+                ok: true,
+            })
+            .mockResolvedValueOnce({
+                json: () =>
+                    Promise.resolve({ revision: 2, scene: replacementScene }),
+                ok: true,
+            });
+
+        render(<BoardCanvas {...props} canEdit={false} />);
+        const initialCanvas = await screen.findByTestId('fake-excalidraw');
+        const initialInstance = initialCanvas.dataset.instance;
+
+        expect(excalidrawProps.initialData.appState).toEqual(
+            expect.objectContaining(initialScene.appState),
+        );
+        expect(excalidrawProps.initialData.files).toEqual(initialScene.files);
+
+        const signal = channel.listen.mock.calls.at(-1)[1];
+        signal({ revision: 2 });
+
+        await waitFor(() =>
+            expect(screen.getByTestId('fake-excalidraw').dataset.instance).not.toBe(
+                initialInstance,
+            ),
+        );
+        expect(excalidrawProps.initialData.appState).not.toHaveProperty(
+            'gridModeEnabled',
+        );
+        expect(excalidrawProps.initialData.appState).not.toHaveProperty(
+            'viewBackgroundColor',
+        );
+        expect(excalidrawProps.initialData.files).toEqual({});
+        expect(excalidrawApi.updateScene).not.toHaveBeenCalled();
+        expect(excalidrawApi.addFiles).not.toHaveBeenCalled();
+    });
+
     it('does not echo initial or refreshed scenes back through the save route', async () => {
         const refreshedScene = {
             ...scene,
@@ -160,10 +229,11 @@ describe('BoardCanvas', () => {
         expect(fetch).toHaveBeenCalledTimes(1);
 
         const signal = channel.listen.mock.calls.at(-1)[1];
+        const initialInstance = screen.getByTestId('fake-excalidraw').dataset.instance;
         signal({ revision: 2 });
         await waitFor(() =>
-            expect(excalidrawApi.updateScene).toHaveBeenCalledWith(
-                expect.objectContaining({ elements: refreshedScene.elements }),
+            expect(screen.getByTestId('fake-excalidraw').dataset.instance).not.toBe(
+                initialInstance,
             ),
         );
         await new Promise((resolve) => setTimeout(resolve, 10));
@@ -175,6 +245,25 @@ describe('BoardCanvas', () => {
         await new Promise((resolve) => setTimeout(resolve, 675));
 
         expect(fetch).toHaveBeenCalledTimes(2);
+
+        excalidrawProps.onChange(
+            [{ id: 'local', type: 'rectangle' }],
+            refreshedScene.appState,
+            refreshedScene.files,
+        );
+        await new Promise((resolve) => setTimeout(resolve, 675));
+
+        expect(fetch).toHaveBeenCalledTimes(3);
+        expect(fetch).toHaveBeenLastCalledWith(
+            '/save',
+            expect.objectContaining({
+                headers: expect.objectContaining({
+                    'Content-Type': 'application/json',
+                    'X-Socket-ID': 'socket-123',
+                }),
+                method: 'PUT',
+            }),
+        );
     });
 });
 
