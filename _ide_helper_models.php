@@ -50,9 +50,19 @@ namespace App\Models{
  * @property CarbonInterface|null $expires_at
  * @property-read Board $board
  * @property-read User|null $recipient
+ * @property \Carbon\CarbonImmutable|null $created_at
+ * @property \Carbon\CarbonImmutable|null $updated_at
  * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare whereAccess($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare whereBoardId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare whereExpiresAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare whereKind($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare whereRecipientUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|BoardShare whereUpdatedAt($value)
  * @mixin \Eloquent
  */
 	#[\AllowDynamicProperties]
