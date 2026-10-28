@@ -348,13 +348,13 @@ it('keeps explicit no-arrowhead values across every MCP write tool', function ()
     $slideArrowId = (string) Str::uuid7();
 
     foreach ([AddElementsTool::class, AddSlideTool::class] as $tool) {
-        $property = app($tool)->toArray()['inputSchema']['properties']['elements']['items']['properties'];
+        $property = resolve($tool)->toArray()['inputSchema']['properties']['elements']['items']['properties'];
 
         expect($property['startArrowhead']['type'])->toBeArray()->toContain('null')
             ->and($property['endArrowhead']['type'])->toBeArray()->toContain('null');
     }
 
-    $patchProperty = app(UpdateElementsTool::class)->toArray()['inputSchema']['properties']['elements']['items']['properties'];
+    $patchProperty = resolve(UpdateElementsTool::class)->toArray()['inputSchema']['properties']['elements']['items']['properties'];
     expect($patchProperty['startArrowhead']['type'])->toBeArray()->toContain('null')
         ->and($patchProperty['endArrowhead']['type'])->toBeArray()->toContain('null');
 
