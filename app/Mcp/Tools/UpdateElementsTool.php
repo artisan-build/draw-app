@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\McpSceneInput;
 use App\Mcp\Tools\Concerns\AccessesBoards;
+use App\Mcp\Tools\Concerns\BuildsDrawSchemas;
 use App\Mcp\Tools\Concerns\PresentsBoards;
 use App\Services\BoardSceneService;
 use ArtisanBuild\BuiltForCloud\Mcp\AdvertisesToolClassification;
@@ -31,9 +33,9 @@ use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 #[ToolEffect(Effect::Write)]
 final class UpdateElementsTool extends Tool
 {
-    use AccessesBoards, AdvertisesToolClassification, AdvertisesToolEffect, PresentsBoards, RespectsEffectCeiling;
+    use AccessesBoards, AdvertisesToolClassification, AdvertisesToolEffect, BuildsDrawSchemas, PresentsBoards, RespectsEffectCeiling;
 
-    public function handle(Request $request, BoardSceneService $scenes): Response|ResponseFactory
+    public function handle(Request $request, BoardSceneService $scenes, McpSceneInput $input): Response|ResponseFactory
     {
         $actor = $this->actor(OperatorAbility::McpAdmin);
         $data = $request->validate([
@@ -43,10 +45,11 @@ final class UpdateElementsTool extends Tool
             'elements.*.id' => ['required', 'string', 'max:255'],
         ]);
         $board = $this->editableBoard($actor, $data['id']);
+        $patches = $input->patches($request->array('elements'));
 
         return $board === null
             ? $this->boardRefused()
-            : Response::structured($this->boardPayload($scenes->updateElements($actor, $board, $request->array('elements'))));
+            : Response::structured($this->boardPayload($scenes->updateElements($actor, $board, $patches)));
     }
 
     /** @return array<string, mixed> */
@@ -54,7 +57,7 @@ final class UpdateElementsTool extends Tool
     {
         return [
             'id' => $schema->string()->max(36)->description('Editable board UUIDv7.')->required(),
-            'elements' => $schema->array()->items($schema->object())->min(1)->max(200)->description('Element patches with stable ids.')->required(),
+            'elements' => $this->patchesSchema($schema),
         ];
     }
 }

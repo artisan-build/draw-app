@@ -599,3 +599,70 @@ it('emits exactly one compact after-commit revision event for each successful MC
         return true;
     });
 });
+
+it('bounds structured scene inputs and keeps deletion behind the destructive door', function (): void {
+    $creator = mcpUser('Bounded input creator');
+    $board = mcpBoard($creator, 'Bounded input board');
+    $admin = mcpCredential($creator, [OperatorAbility::McpAdmin->value]);
+
+    foreach ([
+        ['id' => 'seed', 'isDeleted' => true],
+        ['id' => 'seed', 'deleted' => true],
+        ['id' => 'seed', 'customState' => ['nested' => ['delete' => true]]],
+    ] as $patch) {
+        callMcp('/mcp/write', 'update_elements', [
+            'id' => $board->id,
+            'elements' => [$patch],
+        ], $admin)->assertOk()->assertJsonPath('result.isError', true);
+    }
+
+    $tooManyPoints = array_fill(0, 101, [0, 0]);
+    callMcp('/mcp/write', 'add_elements', [
+        'id' => $board->id,
+        'elements' => [['type' => 'arrow', 'points' => $tooManyPoints]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', true);
+    callMcp('/mcp/write', 'update_elements', [
+        'id' => $board->id,
+        'elements' => [['id' => 'seed', 'text' => str_repeat('x', 4001)]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', true);
+    callMcp('/mcp/write', 'add_slide', [
+        'id' => $board->id,
+        'title' => 'Too deep',
+        'elements' => [[
+            'type' => 'arrow',
+            'start' => ['id' => 'seed', 'extra' => ['nested' => ['escape' => true]]],
+        ]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', true);
+
+    expect($board->fresh()->revision)->toBe(0)
+        ->and(collect($board->fresh()->scene['elements'])->firstWhere('id', 'seed')['isDeleted'] ?? false)->toBeFalse();
+
+    callMcp('/mcp/write', 'add_elements', [
+        'id' => $board->id,
+        'elements' => [[
+            'id' => (string) Str::uuid7(),
+            'type' => 'arrow',
+            'points' => [[0, 0], [120, 40]],
+            'start' => ['id' => 'seed', 'focus' => 0, 'gap' => 8],
+            'label' => 'Bounded arrow',
+        ]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+    callMcp('/mcp/write', 'update_elements', [
+        'id' => $board->id,
+        'elements' => [['id' => 'seed', 'x' => 25, 'backgroundColor' => '#ffec99', 'locked' => true]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+    callMcp('/mcp/write', 'add_slide', [
+        'id' => $board->id,
+        'title' => 'Bounded slide',
+        'elements' => [['type' => 'text', 'text' => 'Bounded content', 'x' => 10, 'y' => 20]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+
+    callMcp('/mcp/destructive', 'delete_elements', [
+        'id' => $board->id,
+        'element_ids' => ['seed'],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+
+    $deleted = collect($board->fresh()->scene['elements'])->firstWhere('id', 'seed');
+    expect($deleted['isDeleted'])->toBeTrue()
+        ->and($board->fresh()->revision)->toBe(4);
+});

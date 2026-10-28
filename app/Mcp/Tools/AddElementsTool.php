@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\McpSceneInput;
 use App\Mcp\Tools\Concerns\AccessesBoards;
 use App\Mcp\Tools\Concerns\BuildsDrawSchemas;
 use App\Mcp\Tools\Concerns\PresentsBoards;
@@ -34,7 +35,7 @@ final class AddElementsTool extends Tool
 {
     use AccessesBoards, AdvertisesToolClassification, AdvertisesToolEffect, BuildsDrawSchemas, PresentsBoards, RespectsEffectCeiling;
 
-    public function handle(Request $request, BoardSceneService $scenes): Response|ResponseFactory
+    public function handle(Request $request, BoardSceneService $scenes, McpSceneInput $input): Response|ResponseFactory
     {
         $actor = $this->actor(OperatorAbility::McpAdmin);
         $data = $request->validate([
@@ -43,10 +44,11 @@ final class AddElementsTool extends Tool
             'elements.*' => ['array'],
         ]);
         $board = $this->editableBoard($actor, $data['id']);
+        $elements = $input->skeletons($request->array('elements'));
 
         return $board === null
             ? $this->boardRefused()
-            : Response::structured($this->boardPayload($scenes->addSkeletons($actor, $board, $data['elements'])));
+            : Response::structured($this->boardPayload($scenes->addSkeletons($actor, $board, $elements)));
     }
 
     /** @return array<string, mixed> */

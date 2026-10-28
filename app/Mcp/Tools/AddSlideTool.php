@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools;
 
+use App\Mcp\McpSceneInput;
 use App\Mcp\Tools\Concerns\AccessesBoards;
 use App\Mcp\Tools\Concerns\BuildsDrawSchemas;
 use App\Mcp\Tools\Concerns\PresentsBoards;
@@ -34,7 +35,7 @@ final class AddSlideTool extends Tool
 {
     use AccessesBoards, AdvertisesToolClassification, AdvertisesToolEffect, BuildsDrawSchemas, PresentsBoards, RespectsEffectCeiling;
 
-    public function handle(Request $request, BoardSceneService $scenes): Response|ResponseFactory
+    public function handle(Request $request, BoardSceneService $scenes, McpSceneInput $input): Response|ResponseFactory
     {
         $actor = $this->actor(OperatorAbility::McpAdmin);
         $data = $request->validate([
@@ -44,10 +45,11 @@ final class AddSlideTool extends Tool
             'elements.*' => ['array'],
         ]);
         $board = $this->editableBoard($actor, $data['id']);
+        $elements = $input->skeletons($request->array('elements'));
 
         return $board === null
             ? $this->boardRefused()
-            : Response::structured($this->boardPayload($scenes->addSlide($actor, $board, $data['title'], $data['elements'])));
+            : Response::structured($this->boardPayload($scenes->addSlide($actor, $board, $data['title'], $elements)));
     }
 
     /** @return array<string, mixed> */
@@ -56,7 +58,8 @@ final class AddSlideTool extends Tool
         return [
             'id' => $schema->string()->max(36)->description('Editable board UUIDv7.')->required(),
             'title' => $schema->string()->max(120)->description('Frame name used by the signed viewer frame query.')->required(),
-            'elements' => $schema->array()->items($schema->object())->max(200)->description('Optional child skeletons; pass an empty list for a title-only slide.')->required(),
+            'elements' => $this->skeletonsSchema($schema, minimum: 0)
+                ->description('Optional child skeletons; pass an empty list for a title-only slide.'),
         ];
     }
 }
