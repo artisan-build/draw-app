@@ -388,8 +388,7 @@ final class McpSceneInput
         $this->copyEnum($input, $output, $field, self::ARROWHEADS, $path);
     }
 
-    /** @return never */
-    private function fail(string $path, string $message): void
+    private function fail(string $path, string $message): never
     {
         throw ValidationException::withMessages([$path => $message]);
     }
