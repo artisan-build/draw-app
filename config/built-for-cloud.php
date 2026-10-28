@@ -18,6 +18,13 @@ return [
         'app_purposes' => [],
     ],
 
+    'mcp' => [
+        'path' => '/mcp',
+        'write_path' => '/mcp/write',
+        'destructive_path' => '/mcp/destructive',
+        'delegated' => true,
+    ],
+
     'ui' => [
         'landing_page' => false,
         'member_management' => false,
