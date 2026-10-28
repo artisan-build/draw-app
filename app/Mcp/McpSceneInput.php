@@ -361,7 +361,14 @@ final class McpSceneInput
             return;
         }
         $binding = $this->object($input[$field], ['id', 'elementId', 'focus', 'gap'], "{$path}.{$field}");
-        $target = $binding['elementId'] ?? $binding['id'] ?? null;
+        $targetAliases = array_values(array_filter(
+            ['id', 'elementId'],
+            fn (string $alias): bool => array_key_exists($alias, $binding),
+        ));
+        if (count($targetAliases) !== 1) {
+            $this->fail("{$path}.{$field}", 'Must name exactly one target id.');
+        }
+        $target = $binding[$targetAliases[0]];
         if (! is_string($target) || $target === '' || strlen($target) > 255) {
             $this->fail("{$path}.{$field}", 'Must name one bounded target id.');
         }

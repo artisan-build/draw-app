@@ -604,6 +604,7 @@ it('bounds structured scene inputs and keeps deletion behind the destructive doo
     $creator = mcpUser('Bounded input creator');
     $board = mcpBoard($creator, 'Bounded input board');
     $admin = mcpCredential($creator, [OperatorAbility::McpAdmin->value]);
+    $originalScene = $board->scene;
 
     foreach ([
         ['id' => 'seed', 'isDeleted' => true],
@@ -614,6 +615,9 @@ it('bounds structured scene inputs and keeps deletion behind the destructive doo
             'id' => $board->id,
             'elements' => [$patch],
         ], $admin)->assertOk()->assertJsonPath('result.isError', true);
+
+        expect($board->fresh()->scene)->toBe($originalScene)
+            ->and($board->fresh()->revision)->toBe(0);
     }
 
     $tooManyPoints = array_fill(0, 101, [0, 0]);
@@ -621,10 +625,14 @@ it('bounds structured scene inputs and keeps deletion behind the destructive doo
         'id' => $board->id,
         'elements' => [['type' => 'arrow', 'points' => $tooManyPoints]],
     ], $admin)->assertOk()->assertJsonPath('result.isError', true);
+    expect($board->fresh()->scene)->toBe($originalScene)
+        ->and($board->fresh()->revision)->toBe(0);
     callMcp('/mcp/write', 'update_elements', [
         'id' => $board->id,
         'elements' => [['id' => 'seed', 'text' => str_repeat('x', 4001)]],
     ], $admin)->assertOk()->assertJsonPath('result.isError', true);
+    expect($board->fresh()->scene)->toBe($originalScene)
+        ->and($board->fresh()->revision)->toBe(0);
     callMcp('/mcp/write', 'add_slide', [
         'id' => $board->id,
         'title' => 'Too deep',
@@ -633,20 +641,46 @@ it('bounds structured scene inputs and keeps deletion behind the destructive doo
             'start' => ['id' => 'seed', 'extra' => ['nested' => ['escape' => true]]],
         ]],
     ], $admin)->assertOk()->assertJsonPath('result.isError', true);
+    expect($board->fresh()->scene)->toBe($originalScene)
+        ->and($board->fresh()->revision)->toBe(0);
 
-    expect($board->fresh()->revision)->toBe(0)
-        ->and(collect($board->fresh()->scene['elements'])->firstWhere('id', 'seed')['isDeleted'] ?? false)->toBeFalse();
+    foreach ([
+        ['elementId' => 'seed', 'id' => ['nested' => ['escape' => true]]],
+        ['elementId' => 'seed', 'id' => str_repeat('x', 1_048_576)],
+    ] as $binding) {
+        callMcp('/mcp/write', 'update_elements', [
+            'id' => $board->id,
+            'elements' => [['id' => 'seed', 'startBinding' => $binding]],
+        ], $admin)->assertOk()->assertJsonPath('result.isError', true);
 
+        expect($board->fresh()->scene)->toBe($originalScene)
+            ->and($board->fresh()->revision)->toBe(0);
+    }
+
+    $idAliasArrowId = (string) Str::uuid7();
+    $elementIdAliasArrowId = (string) Str::uuid7();
     callMcp('/mcp/write', 'add_elements', [
         'id' => $board->id,
-        'elements' => [[
-            'id' => (string) Str::uuid7(),
-            'type' => 'arrow',
-            'points' => [[0, 0], [120, 40]],
-            'start' => ['id' => 'seed', 'focus' => 0, 'gap' => 8],
-            'label' => 'Bounded arrow',
-        ]],
+        'elements' => [
+            [
+                'id' => $idAliasArrowId,
+                'type' => 'arrow',
+                'points' => [[0, 0], [120, 40]],
+                'start' => ['id' => 'seed', 'focus' => 0, 'gap' => 8],
+                'label' => 'Id alias arrow',
+            ],
+            [
+                'id' => $elementIdAliasArrowId,
+                'type' => 'arrow',
+                'points' => [[0, 0], [80, 60]],
+                'startBinding' => ['elementId' => 'seed', 'focus' => 0.5, 'gap' => 4],
+                'label' => 'Element id alias arrow',
+            ],
+        ],
     ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+    $addedElements = collect($board->fresh()->scene['elements']);
+    expect($addedElements->firstWhere('id', $idAliasArrowId)['startBinding']['elementId'])->toBe('seed')
+        ->and($addedElements->firstWhere('id', $elementIdAliasArrowId)['startBinding']['elementId'])->toBe('seed');
     callMcp('/mcp/write', 'update_elements', [
         'id' => $board->id,
         'elements' => [['id' => 'seed', 'x' => 25, 'backgroundColor' => '#ffec99', 'locked' => true]],
