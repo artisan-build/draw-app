@@ -17,22 +17,22 @@ trait AccessesBoards
 {
     protected function actor(OperatorAbility $ability): User
     {
-        return app(McpActorResolver::class)->resolve($ability);
+        return resolve(McpActorResolver::class)->resolve($ability);
     }
 
     protected function viewableBoard(User $actor, string $id): ?Board
     {
-        return $this->board($id, app(BoardAccess::class)->viewableBy($actor));
+        return $this->board($id, resolve(BoardAccess::class)->viewableBy($actor));
     }
 
     protected function editableBoard(User $actor, string $id): ?Board
     {
-        return $this->board($id, app(BoardAccess::class)->editableBy($actor));
+        return $this->board($id, resolve(BoardAccess::class)->editableBy($actor));
     }
 
     protected function ownedBoard(User $actor, string $id): ?Board
     {
-        return $this->board($id, app(BoardAccess::class)->ownedBy($actor));
+        return $this->board($id, resolve(BoardAccess::class)->ownedBy($actor));
     }
 
     protected function boardRefused(): Response
