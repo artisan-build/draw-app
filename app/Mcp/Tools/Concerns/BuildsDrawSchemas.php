@@ -127,6 +127,6 @@ trait BuildsDrawSchemas
             'arrow', 'bar', 'dot', 'circle', 'circle_outline', 'triangle',
             'triangle_outline', 'diamond', 'diamond_outline', 'crowfoot_one',
             'crowfoot_many', 'crowfoot_one_or_many',
-        ]);
+        ])->nullable();
     }
 }
