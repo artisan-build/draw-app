@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use Illuminate\Support\Str;
+use InvalidArgumentException;
 
 class ExcalidrawConverter
 {
@@ -82,7 +83,13 @@ class ExcalidrawConverter
     /** @return array<int, array<string, mixed>> */
     public function mermaid(string $mermaid, float $offsetX = 0, float $offsetY = 0): array
     {
-        $source = preg_replace('/^\s*(?:flowchart|graph)\s+(?:TD|TB|LR|RL|BT)\s*;?/i', '', trim($mermaid)) ?? '';
+        $source = trim($mermaid);
+
+        if (preg_match('/^\s*(?:flowchart|graph)\s+(?:TD|TB|LR|RL|BT)\s*;?/i', $source) !== 1) {
+            throw new InvalidArgumentException('Only Mermaid flowcharts are supported.');
+        }
+
+        $source = preg_replace('/^\s*(?:flowchart|graph)\s+(?:TD|TB|LR|RL|BT)\s*;?/i', '', $source) ?? '';
         $statements = preg_split('/[;\n]+/', $source, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $nodes = [];
         $edges = [];
@@ -110,13 +117,7 @@ class ExcalidrawConverter
         }
 
         if ($nodes === []) {
-            return $this->convert([[
-                'type' => 'text',
-                'text' => $mermaid,
-                'x' => $offsetX,
-                'y' => $offsetY,
-                'w' => 600,
-            ]]);
+            throw new InvalidArgumentException('The Mermaid flowchart contains no supported nodes.');
         }
 
         $skeletons = [];
