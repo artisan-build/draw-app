@@ -10,6 +10,9 @@ it('boots with the Draw application and deployment configuration', function (): 
     );
 
     $resourceKinds = collect($catalogManifest['resources'])->pluck('kind');
+    $websocketsResources = collect($catalogManifest['resources'])
+        ->where('kind', 'websockets')
+        ->values();
 
     expect(config('app.name'))->toBe('Draw')
         ->and(config('database.default'))->toBe('pgsql')
@@ -22,6 +25,7 @@ it('boots with the Draw application and deployment configuration', function (): 
         ])
         ->and($resourceKinds)->toContain('database')
         ->and($resourceKinds)->toContain('queue')
-        ->and($resourceKinds)->not->toContain('websockets')
+        ->and($websocketsResources)->toHaveCount(1)
+        ->and($websocketsResources->sole())->toBe(['kind' => 'websockets'])
         ->and($catalogManifest['environment_keys'])->toBe([]);
 });

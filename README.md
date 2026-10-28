@@ -2,11 +2,11 @@
 
 Draw is a team whiteboard where people and agents can sketch together in real time. It is built around the MIT-licensed [`@excalidraw/excalidraw`](https://github.com/excalidraw/excalidraw) package.
 
-This repository currently contains the Laravel, Built for Cloud, PostgreSQL, and Vite/React scaffold. Board editing, sharing, live updates, and the MCP tool surface will arrive in later feature slices.
+The MVP includes board editing, view and edit sharing, signed viewer links, live updates, and a delegated MCP tool surface.
 
 ## Built for Cloud
 
-Draw is intended for installation through [its Scalpels product page](https://scalpels.app/products/draw). Scalpels supplies managed identity and provisions the PostgreSQL database and queue declared in `built-for-cloud.json`. Cloud-provisioned configuration is injected by Laravel Cloud and must not be copied into local environment files.
+Draw is intended for installation through [its Scalpels product page](https://scalpels.app/products/draw). Scalpels supplies managed identity and provisions the PostgreSQL database, queue, and managed WebSockets declared in `built-for-cloud.json`. Laravel Cloud injects their configuration, so it must not be copied into local environment files.
 
 ## Local development
 
@@ -41,7 +41,7 @@ That command regenerates IDE helpers, runs Rector, Pint, PHPStan, Pest, and the 
 
 ## Deployment
 
-The standard Built for Cloud build runs `composer install`; Draw’s Composer post-install hook then runs `npm ci` and `npm run build` without a wrapper script. `built-for-cloud.json` asks Scalpels for PostgreSQL and a managed queue, then runs the database migrations after deployment. The managed WebSockets resource will be added only after its manifest shape is available.
+The standard Built for Cloud build runs `composer install`; Draw’s Composer post-install hook then runs `npm ci` and `npm run build` without a wrapper script. `built-for-cloud.json` asks Scalpels for PostgreSQL, a managed queue, and managed WebSockets, then runs the database migrations after deployment.
 
 ## Excalidraw
 
