@@ -1,0 +1,127 @@
+@import 'tailwindcss';
+@import '../../vendor/livewire/flux/dist/flux.css';
+
+@source '../views';
+@source '../../vendor/artisan-build/built-for-cloud/resources/views/**/*.blade.php';
+@source '../../vendor/livewire/flux/stubs/**/*.blade.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+.draw-shell {
+    display: grid;
+    grid-template-columns: minmax(13rem, 15rem) minmax(0, 1fr);
+    gap: 1.5rem;
+    width: min(72rem, calc(100% - 2rem));
+    min-height: calc(100vh - 5rem);
+    margin: 0 auto;
+    padding: 1.5rem 0 2rem;
+}
+
+.draw-sidebar {
+    position: sticky;
+    top: 6rem;
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-height: 24rem;
+    padding: 1rem;
+    border: 1px solid var(--color-clay-edge, #d7c5b2);
+    border-radius: 1rem;
+    background: var(--color-clay-surface, #fffaf4);
+    box-shadow: 0 1px 2px rgb(74 53 37 / 8%);
+}
+
+.draw-brand {
+    display: block;
+    color: var(--color-clay-ink, #2d2118);
+    text-decoration: none;
+}
+
+.draw-navigation {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.draw-navigation a,
+.draw-settings {
+    display: block;
+    padding: 0.7rem 0.8rem;
+    border-radius: 0.7rem;
+    color: var(--color-clay-soft, #5e4b3d);
+    font-size: 0.925rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.draw-navigation a:hover,
+.draw-navigation a[aria-current='page'],
+.draw-settings:hover {
+    background: var(--color-clay-slip, #f4e8da);
+    color: var(--color-clay-ink, #2d2118);
+}
+
+.draw-navigation .draw-new-board {
+    margin-top: 0.5rem;
+    background: var(--color-clay-iron, #6d4b36);
+    color: var(--color-clay-surface, #fffaf4);
+    text-align: center;
+}
+
+.draw-navigation .draw-new-board:hover {
+    background: var(--color-clay-ink, #2d2118);
+    color: var(--color-clay-surface, #fffaf4);
+}
+
+.draw-settings {
+    margin-top: auto;
+}
+
+.draw-content {
+    min-width: 0;
+    padding: 1.25rem;
+    border: 1px solid var(--color-clay-edge, #d7c5b2);
+    border-radius: 1rem;
+    background: var(--color-clay-surface, #fffaf4);
+}
+
+.draw-content > footer {
+    margin-top: 2.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-clay-edge, #d7c5b2);
+    color: var(--color-clay-muted, #806d5f);
+    font-size: 0.825rem;
+    line-height: 1.5;
+}
+
+.draw-content > footer a {
+    color: inherit;
+}
+
+@media (max-width: 720px) {
+    .draw-shell {
+        grid-template-columns: minmax(0, 1fr);
+        width: min(100% - 1rem, 42rem);
+        gap: 0.75rem;
+        padding-top: 0.75rem;
+    }
+
+    .draw-sidebar {
+        position: static;
+        min-height: auto;
+    }
+
+    .draw-navigation {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .draw-settings {
+        margin-top: 0;
+    }
+
+    .draw-content {
+        padding: 1rem;
+    }
+}

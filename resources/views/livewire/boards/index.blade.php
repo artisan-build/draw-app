@@ -1,5 +1,5 @@
 <div>
-    <section data-testid="board-create-form" style="margin-bottom: 2rem;">
+    <section id="new-board" data-testid="board-create-form" style="margin-bottom: 2rem; scroll-margin-top: 7rem;">
         <flux:heading size="xl">Boards</flux:heading>
 
         <form wire:submit="create" style="display: flex; align-items: end; gap: 0.75rem; margin-top: 1rem;">

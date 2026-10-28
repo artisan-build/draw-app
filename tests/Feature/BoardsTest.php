@@ -57,6 +57,28 @@ it('lets every admitted BfC role create a UUIDv7 board through the Livewire page
         ->and($board->revision)->toBe(0);
 })->with(UserRole::cases());
 
+it('renders the board index and Draw navigation from the BfC dashboard', function (): void {
+    $user = boardUser(UserRole::Member, 'Dashboard user');
+    $board = Board::query()->create([
+        'creator_id' => $user->id,
+        'title' => 'Dashboard route board',
+    ]);
+
+    $this->actingAs($user)->withSession(boardSession($user));
+
+    $this->get(route('bfc.dashboard'))
+        ->assertOk()
+        ->assertSee('data-testid="bfc-layout"', false)
+        ->assertSee('data-testid="draw-sidebar"', false)
+        ->assertSee('data-testid="draw-navigation"', false)
+        ->assertSee('data-testid="boards-list"', false)
+        ->assertSee('href="'.route('boards.index').'"', false)
+        ->assertSee('href="'.route('boards.shared').'"', false)
+        ->assertSee('href="'.route('board-shares.index').'"', false)
+        ->assertSee('href="'.route('bfc.ui.home').'"', false)
+        ->assertSee($board->title);
+});
+
 it('keeps private boards hidden from an unrelated role on every board surface', function (UserRole $unrelatedRole): void {
     $creator = boardUser(UserRole::Member, 'Board creator');
     $unrelated = boardUser($unrelatedRole, "Unrelated {$unrelatedRole->value}");

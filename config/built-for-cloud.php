@@ -2,7 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Livewire\Boards\Index;
+
 return [
+    'dashboard' => Index::class,
+
     'manifest' => [
         'name' => 'Draw',
         'slug' => 'draw',
