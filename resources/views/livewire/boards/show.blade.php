@@ -20,12 +20,54 @@
         style="height: 70vh; border: 1px solid #d4d4d8; border-radius: 0.75rem;"
     ></div>
 
+    @if ($canEdit)
+        <section class="board-support-card" data-testid="board-agent-prompt">
+            <div>
+                <flux:heading size="lg">Work on this board with an agent</flux:heading>
+                <p>Copy this prompt into your agent chat.</p>
+            </div>
+            <textarea id="board-agent-prompt" class="board-copy-field board-copy-field--prompt" readonly>{{ $agentPrompt }}</textarea>
+            <div class="board-copy-actions">
+                <button
+                    class="board-copy-button"
+                    type="button"
+                    data-copy-target="board-agent-prompt"
+                    data-copy-status="board-agent-prompt-status"
+                    data-copy-success="Prompt copied"
+                >Copy prompt</button>
+                <span id="board-agent-prompt-status" class="board-copy-status" aria-live="polite"></span>
+            </div>
+        </section>
+    @endif
+
     @if ($canShare)
-        <section data-testid="board-share-create" style="display: grid; gap: 1rem; margin-top: 2rem;">
+        <section class="board-support-card" data-testid="board-share-create">
             <flux:heading size="lg">Share board</flux:heading>
             <p>People shown here are team members who have opened this app.</p>
 
-            <form method="POST" action="{{ route('board-shares.store', $board) }}" style="display: flex; align-items: end; gap: 0.75rem;">
+            @if ($shareCreated)
+                <div class="board-share-result" data-testid="board-share-result">
+                    @if ($newShareUrl)
+                        <label for="new-board-share-url">View-only link</label>
+                        <div class="board-copy-row">
+                            <input id="new-board-share-url" class="board-copy-field" type="text" value="{{ $newShareUrl }}" readonly>
+                            <button
+                                class="board-copy-button"
+                                type="button"
+                                data-copy-target="new-board-share-url"
+                                data-copy-status="new-board-share-status"
+                                data-copy-success="Link copied"
+                                data-copy-on-load
+                            >Copy link</button>
+                        </div>
+                        <span id="new-board-share-status" class="board-copy-status" aria-live="polite">Link ready to copy</span>
+                    @else
+                        <p>Share created.</p>
+                    @endif
+                </div>
+            @endif
+
+            <form class="board-share-form" method="POST" action="{{ route('board-shares.store', $board) }}">
                 @csrf
                 <input type="hidden" name="kind" value="user">
                 <label>
@@ -46,7 +88,7 @@
                 <flux:button type="submit" variant="primary">Share with person</flux:button>
             </form>
 
-            <form method="POST" action="{{ route('board-shares.store', $board) }}" style="display: flex; align-items: end; gap: 0.75rem;">
+            <form class="board-share-form" method="POST" action="{{ route('board-shares.store', $board) }}">
                 @csrf
                 <input type="hidden" name="kind" value="team">
                 <label>
@@ -59,7 +101,7 @@
                 <flux:button type="submit">Share with team</flux:button>
             </form>
 
-            <form method="POST" action="{{ route('board-shares.store', $board) }}" style="display: flex; align-items: end; gap: 0.75rem;">
+            <form class="board-share-form" method="POST" action="{{ route('board-shares.store', $board) }}">
                 @csrf
                 <input type="hidden" name="kind" value="link">
                 <flux:input name="expires_in_minutes" type="number" min="1" max="525600" label="Expiry in minutes (optional)" />

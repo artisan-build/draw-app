@@ -26397,6 +26397,21 @@ namespace Illuminate\Http\Client {
             }
     }
 
+namespace App\Livewire\Boards {
+    /**
+     */
+    class Index extends \Livewire\Component {
+            }
+    /**
+     */
+    class SharedWithMe extends \Livewire\Component {
+            }
+    /**
+     */
+    class Show extends \Livewire\Component {
+            }
+    }
+
 namespace Illuminate\View {
     /**
      */
@@ -26518,21 +26533,6 @@ namespace Illuminate\View {
             return \Illuminate\View\View::response($callback);
         }
 
-            }
-    }
-
-namespace App\Livewire\Boards {
-    /**
-     */
-    class Index extends \Livewire\Component {
-            }
-    /**
-     */
-    class SharedWithMe extends \Livewire\Component {
-            }
-    /**
-     */
-    class Show extends \Livewire\Component {
             }
     }
 
