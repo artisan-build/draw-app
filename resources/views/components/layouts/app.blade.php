@@ -1,33 +1,51 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <head>
-        @include('partials.head')
-    </head>
-    <body style="margin: 0; background: #f8fafc; color: #18181b; font-family: ui-sans-serif, system-ui, sans-serif;">
-        <header style="border-bottom: 1px solid #e4e4e7; background: #ffffff;">
-            <nav style="display: flex; align-items: center; justify-content: space-between; max-width: 72rem; margin: 0 auto; padding: 1rem 1.5rem;">
-                <a href="{{ route('boards.index') }}" wire:navigate style="color: inherit; font-size: 1.125rem; font-weight: 700; text-decoration: none;">
-                    Draw
+@props(['title' => null])
+
+@push('head')
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    @vite('resources/js/app.jsx')
+    @fluxAppearance
+@endpush
+
+@push('scripts')
+    @fluxScripts
+@endpush
+
+<x-bfc-layout :title="filled($title) ? $title.' - Draw' : 'Draw'">
+    <div class="draw-shell" data-testid="draw-app-shell">
+        <aside class="draw-sidebar" data-testid="draw-sidebar">
+            <a class="draw-brand" href="{{ route('boards.index') }}" wire:navigate>
+                <x-app-logo />
+            </a>
+
+            <nav class="draw-navigation" aria-label="Draw" data-testid="draw-navigation">
+                <a href="{{ route('boards.index') }}" wire:navigate @if(request()->routeIs('bfc.dashboard', 'boards.index')) aria-current="page" @endif>
+                    Boards
                 </a>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <a href="{{ route('boards.index') }}" wire:navigate>Boards</a>
-                    <a href="{{ route('boards.shared') }}" wire:navigate>Shared with me</a>
-                    <a href="{{ route('board-shares.index') }}" wire:navigate>My shares</a>
-                    <span style="color: #71717a; font-size: 0.875rem;">{{ auth()->user()?->name }}</span>
-                </div>
+                <a href="{{ route('boards.shared') }}" wire:navigate @if(request()->routeIs('boards.shared')) aria-current="page" @endif>
+                    Shared with me
+                </a>
+                <a href="{{ route('board-shares.index') }}" wire:navigate @if(request()->routeIs('board-shares.index')) aria-current="page" @endif>
+                    My shares
+                </a>
+                <a class="draw-new-board" href="{{ route('boards.index') }}#new-board" wire:navigate>
+                    New board
+                </a>
             </nav>
-        </header>
 
-        <main style="max-width: 72rem; margin: 0 auto; padding: 2rem 1.5rem;">
+            <a class="draw-settings" href="{{ route('bfc.ui.home') }}">
+                Settings
+            </a>
+        </aside>
+
+        <div class="draw-content" data-testid="draw-content">
             {{ $slot }}
-        </main>
 
-        <footer data-testid="about-excalidraw" style="max-width: 72rem; margin: 0 auto; padding: 0 1.5rem 2rem; color: #71717a; font-size: 0.875rem;">
-            Powered by <a href="https://excalidraw.com" rel="noreferrer" target="_blank">Excalidraw</a>.
-            For richer collaboration and AI tools, visit <a href="https://plus.excalidraw.com" rel="noreferrer" target="_blank">Excalidraw+</a>.
-            Excalidraw is used under its MIT license.
-        </footer>
-
-        @fluxScripts
-    </body>
-</html>
+            <footer data-testid="about-excalidraw">
+                Powered by <a href="https://excalidraw.com" rel="noreferrer" target="_blank">Excalidraw</a>.
+                For richer collaboration and AI tools, visit <a href="https://plus.excalidraw.com" rel="noreferrer" target="_blank">Excalidraw+</a>.
+                Excalidraw is used under its MIT license.
+            </footer>
+        </div>
+    </div>
+</x-bfc-layout>

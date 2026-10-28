@@ -1,5 +1,6 @@
 import '@excalidraw/excalidraw/index.css';
 import '../css/board-canvas.css';
+import '../css/app.css';
 
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
