@@ -141,6 +141,21 @@
     gap: 0.75rem;
 }
 
+.board-share-form {
+    flex-wrap: wrap;
+}
+
+.board-share-form label {
+    display: grid;
+    min-width: 0;
+    gap: 0.25rem;
+}
+
+.board-share-form select {
+    width: 100%;
+    max-width: 100%;
+}
+
 .board-copy-row .board-copy-field {
     flex: 1;
 }
@@ -204,5 +219,11 @@
     .board-share-form {
         align-items: stretch;
         flex-direction: column;
+    }
+
+    .board-share-form > * {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
     }
 }
