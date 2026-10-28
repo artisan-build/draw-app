@@ -11,6 +11,9 @@
         {
             "kind": "queue",
             "size": "mq.flex.512mb"
+        },
+        {
+            "kind": "websockets"
         }
     ],
     "environment_keys": [],
