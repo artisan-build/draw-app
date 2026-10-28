@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Livewire\Boards;
 
+use App\Enums\BoardShareKind;
+use App\Models\BoardShare;
 use App\Services\BoardAccess;
 use ArtisanBuild\BuiltForCloud\User;
 use Illuminate\Support\Facades\Auth;
@@ -24,12 +26,30 @@ class Show extends Component
     public function render(BoardAccess $access): View
     {
         $board = $access->findViewable($this->user(), $this->boardId);
+        $canEdit = $access->editableBy($this->user())->whereKey($board->id)->exists();
+        $canShare = $board->creator_id === $this->user()->id;
+        $newShareId = session('new_board_share_id');
+        $newLink = $canShare && is_string($newShareId)
+            ? BoardShare::query()
+                ->whereKey($newShareId)
+                ->where('board_id', $board->id)
+                ->where('kind', BoardShareKind::Link)
+                ->first()
+            : null;
 
         return view('livewire.boards.show', [
             'board' => $board,
-            'canEdit' => $access->editableBy($this->user())->whereKey($board->id)->exists(),
-            'canShare' => $board->creator_id === $this->user()->id,
-            'users' => $board->creator_id === $this->user()->id
+            'canEdit' => $canEdit,
+            'canShare' => $canShare,
+            'agentPrompt' => sprintf(
+                'Use the Scalpels MCP to work on the Draw board “%s” (board ID %s). Call `installed_apps` and choose the installed Draw app. Call `app_tools`, then use `get_board` and `add_elements` on board `%s`. Then ask me what to draw',
+                $board->title,
+                $board->id,
+                $board->id,
+            ),
+            'shareCreated' => session()->has('board_share_created'),
+            'newShareUrl' => $newLink?->signedUrl(),
+            'users' => $canShare
                 ? User::query()
                     ->whereKeyNot($this->user()->id)
                     ->where('status', 'active')

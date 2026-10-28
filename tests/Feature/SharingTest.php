@@ -251,12 +251,44 @@ it('allows only creators to create and delete shares and exposes no share update
 
     $this->actingAs($creator)->withSession(sharingSession($creator));
     $this->post("/boards/{$board->id}/shares", ['kind' => 'team', 'access' => 'view'])
-        ->assertRedirect('/shares');
+        ->assertRedirect("/boards/{$board->id}");
     $teamShare = $board->shares()->where('kind', BoardShareKind::Team->value)->sole();
     $this->put("/shares/{$teamShare->id}", ['access' => 'edit'])->assertMethodNotAllowed();
     $this->patch("/shares/{$teamShare->id}", ['access' => 'edit'])->assertMethodNotAllowed();
     $this->delete("/shares/{$teamShare->id}")->assertRedirect();
 })->with(UserRole::cases());
+
+it('returns every new share to its board and presents a new signed link there', function (): void {
+    $creator = sharingUser('Stay-on-board creator');
+    $recipient = sharingUser('Stay-on-board recipient');
+    $board = sharingBoard($creator, 'Stay-on-board test board');
+
+    $this->actingAs($creator)->withSession(sharingSession($creator));
+
+    $this->post("/boards/{$board->id}/shares", [
+        'kind' => 'user',
+        'recipient_user_id' => $recipient->id,
+        'access' => 'edit',
+    ])->assertRedirect("/boards/{$board->id}");
+
+    $this->post("/boards/{$board->id}/shares", [
+        'kind' => 'team',
+        'access' => 'view',
+    ])->assertRedirect("/boards/{$board->id}");
+
+    $this->post("/boards/{$board->id}/shares", [
+        'kind' => 'link',
+        'expires_in_minutes' => 60,
+    ])->assertRedirect("/boards/{$board->id}");
+
+    $link = $board->shares()->where('kind', BoardShareKind::Link->value)->sole();
+    $this->assertEquals($link->id, session('new_board_share_id'));
+
+    $this->get("/boards/{$board->id}")
+        ->assertOk()
+        ->assertSee('data-testid="board-share-result"', false)
+        ->assertSee($link->signedUrl());
+});
 
 it('shows every creator-owned share with its immutable access label', function (): void {
     $creator = sharingUser('Share list creator');

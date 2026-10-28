@@ -55,7 +55,7 @@ class BoardShareController extends Controller
             ? now()->addMinutes((int) $validated['expires_in_minutes'])
             : null;
 
-        $shares->create(
+        $share = $shares->create(
             $actor,
             $boardModel,
             $kind,
@@ -64,7 +64,14 @@ class BoardShareController extends Controller
             $expiresAt,
         );
 
-        return to_route('board-shares.index');
+        $response = to_route('boards.show', $boardModel)
+            ->with('board_share_created', true);
+
+        if ($share->kind === BoardShareKind::Link) {
+            $response->with('new_board_share_id', $share->id);
+        }
+
+        return $response;
     }
 
     public function destroy(
