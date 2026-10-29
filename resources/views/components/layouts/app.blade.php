@@ -14,10 +14,6 @@
 <x-bfc-layout :title="filled($title) ? $title.' - Draw' : 'Draw'">
     <x-slot:sidebar>
         <div class="draw-sidebar" data-testid="draw-sidebar">
-            <a class="draw-brand" href="{{ route('boards.index') }}" wire:navigate>
-                <x-app-logo />
-            </a>
-
             <nav class="draw-navigation" aria-label="Draw" data-testid="draw-navigation">
                 <a href="{{ route('boards.index') }}" wire:navigate @if(request()->routeIs('bfc.dashboard', 'boards.index')) aria-current="page" @endif>
                     Boards
@@ -28,14 +24,7 @@
                 <a href="{{ route('board-shares.index') }}" wire:navigate @if(request()->routeIs('board-shares.index')) aria-current="page" @endif>
                     My shares
                 </a>
-                <a class="draw-new-board" href="{{ route('boards.index') }}#new-board" wire:navigate>
-                    New board
-                </a>
             </nav>
-
-            <a class="draw-settings" href="{{ route('bfc.ui.home') }}">
-                Settings
-            </a>
         </div>
     </x-slot:sidebar>
 

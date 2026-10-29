@@ -15,19 +15,12 @@
     gap: 1rem;
 }
 
-.draw-brand {
-    display: block;
-    color: var(--color-clay-ink, #2d2118);
-    text-decoration: none;
-}
-
 .draw-navigation {
     display: grid;
     gap: 0.35rem;
 }
 
-.draw-navigation a,
-.draw-settings {
+.draw-navigation a {
     display: block;
     padding: 0.7rem 0.8rem;
     border-radius: 0.7rem;
@@ -38,26 +31,9 @@
 }
 
 .draw-navigation a:hover,
-.draw-navigation a[aria-current='page'],
-.draw-settings:hover {
+.draw-navigation a[aria-current='page'] {
     background: var(--color-clay-slip, #f4e8da);
     color: var(--color-clay-ink, #2d2118);
-}
-
-.draw-navigation .draw-new-board {
-    margin-top: 0.5rem;
-    background: var(--color-clay-iron, #6d4b36);
-    color: var(--color-clay-surface, #fffaf4);
-    text-align: center;
-}
-
-.draw-navigation .draw-new-board:hover {
-    background: var(--color-clay-ink, #2d2118);
-    color: var(--color-clay-surface, #fffaf4);
-}
-
-.draw-settings {
-    margin-top: auto;
 }
 
 .draw-content {
@@ -81,17 +57,53 @@
     color: inherit;
 }
 
-.board-support-card {
-    display: grid;
-    gap: 1rem;
-    margin-top: 2rem;
-    padding: 1.25rem;
-    border: 1px solid var(--color-clay-edge, #d7c5b2);
-    border-radius: 0.85rem;
+.board-editor-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.board-editor-title {
+    min-width: 0;
+}
+
+.board-editor-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-left: auto;
+}
+
+.board-canvas {
+    height: 70vh;
+    border: 1px solid #d4d4d8;
+    border-radius: 0.75rem;
+}
+
+.board-editor--full-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
     background: var(--color-clay-paper, #faf3e8);
 }
 
-.board-support-card p,
+.board-editor--full-screen .board-canvas {
+    flex: 1;
+    height: auto;
+    min-height: 0;
+}
+
+.board-modal-body {
+    display: grid;
+    gap: 1rem;
+}
+
+.board-modal-body p,
 .board-share-result p {
     margin: 0.25rem 0 0;
     color: var(--color-clay-muted, #806d5f);
@@ -187,4 +199,8 @@
         max-width: 100%;
         min-width: 0;
     }
+}
+
+[x-cloak] {
+    display: none !important;
 }
