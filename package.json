@@ -35,8 +35,8 @@
         "vitest": "^5.0.5"
     },
     "overrides": {
-        "@excalidraw/mermaid-to-excalidraw@2.2.2": "3.1.0",
-        "@excalidraw/mermaid-to-excalidraw@3.1.0": {
+        "@excalidraw/mermaid-to-excalidraw@2.2.2": {
+            ".": "3.1.0",
             "nanoid": "5.1.16"
         },
         "@radix-ui/react-tabs": "1.1.22",
