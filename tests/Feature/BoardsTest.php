@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\BoardShareKind;
+use App\Enums\ShareAccess;
 use App\Livewire\Boards\Index;
 use App\Models\Board;
 use ArtisanBuild\BuiltForCloud\StandaloneAccess;
@@ -147,6 +149,40 @@ it('lets the creator list open fetch and mutate their board', function (): void 
         ->assertOk()
         ->assertJsonPath('scene.elements.0.id', 'browser-element')
         ->assertJsonPath('revision', 2);
+});
+
+it('shows the agent prompt only to people who can edit the current board', function (): void {
+    $creator = boardUser(UserRole::Member, 'Prompt creator');
+    $editor = boardUser(UserRole::Member, 'Prompt editor');
+    $viewer = boardUser(UserRole::Member, 'Prompt viewer');
+    $board = Board::query()->create([
+        'creator_id' => $creator->id,
+        'title' => 'Test-created agent board',
+    ]);
+    $board->shares()->create([
+        'kind' => BoardShareKind::User,
+        'recipient_user_id' => $editor->id,
+        'access' => ShareAccess::Edit,
+    ]);
+    $board->shares()->create([
+        'kind' => BoardShareKind::User,
+        'recipient_user_id' => $viewer->id,
+        'access' => ShareAccess::View,
+    ]);
+
+    foreach ([$creator, $editor] as $actor) {
+        $this->actingAs($actor)->withSession(boardSession($actor));
+        $this->get("/boards/{$board->id}")
+            ->assertOk()
+            ->assertSee('data-testid="board-agent-prompt"', false)
+            ->assertSee($board->id)
+            ->assertSee($board->title);
+    }
+
+    $this->actingAs($viewer)->withSession(boardSession($viewer));
+    $this->get("/boards/{$board->id}")
+        ->assertOk()
+        ->assertDontSee('data-testid="board-agent-prompt"', false);
 });
 
 it('returns not found for malformed board UUIDs', function (): void {

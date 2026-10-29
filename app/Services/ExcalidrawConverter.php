@@ -32,6 +32,9 @@ class ExcalidrawConverter
             $y = (float) ($skeleton['y'] ?? 0) + $offsetY;
             $width = (float) ($skeleton['w'] ?? $skeleton['width'] ?? ($type === 'text' ? 180 : 220));
             $height = (float) ($skeleton['h'] ?? $skeleton['height'] ?? ($type === 'text' ? 36 : 100));
+            if ($type === 'arrow' && isset($skeleton['points']) && is_array($skeleton['points'])) {
+                [$width, $height] = $this->arrowBounds($skeleton['points']) ?? [$width, $height];
+            }
             $element = $this->base($id, $type, $x, $y, $width, $height, $skeleton, $frameId);
 
             if ($type === 'text') {
@@ -44,8 +47,8 @@ class ExcalidrawConverter
                 $element['points'] = $skeleton['points'] ?? [[0, 0], [$width, $height]];
                 $element['startBinding'] = $this->binding($skeleton['startBinding'] ?? $skeleton['start'] ?? null, $ids);
                 $element['endBinding'] = $this->binding($skeleton['endBinding'] ?? $skeleton['end'] ?? null, $ids);
-                $element['startArrowhead'] = $skeleton['startArrowhead'] ?? null;
-                $element['endArrowhead'] = $skeleton['endArrowhead'] ?? 'arrow';
+                $element['startArrowhead'] = array_key_exists('startArrowhead', $skeleton) ? $skeleton['startArrowhead'] : null;
+                $element['endArrowhead'] = array_key_exists('endArrowhead', $skeleton) ? $skeleton['endArrowhead'] : 'arrow';
                 $elements[] = $element;
 
                 if (isset($skeleton['label'])) {
@@ -78,6 +81,31 @@ class ExcalidrawConverter
         }
 
         return $elements;
+    }
+
+    /**
+     * @param  array<int, mixed>  $points
+     * @return array{0: float, 1: float}|null
+     */
+    private function arrowBounds(array $points): ?array
+    {
+        $xs = [];
+        $ys = [];
+
+        foreach ($points as $point) {
+            if (! is_array($point) || ! isset($point[0], $point[1]) || ! is_numeric($point[0]) || ! is_numeric($point[1])) {
+                continue;
+            }
+
+            $xs[] = (float) $point[0];
+            $ys[] = (float) $point[1];
+        }
+
+        if ($xs === []) {
+            return null;
+        }
+
+        return [max($xs) - min($xs), max($ys) - min($ys)];
     }
 
     /** @return array<int, array<string, mixed>> */
