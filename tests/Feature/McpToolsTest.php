@@ -339,6 +339,111 @@ it('invokes every tool through its BfC effect door for an authorized creator', f
     Event::assertDispatchedTimes(BoardUpdated::class, 6);
 });
 
+it('keeps explicit no-arrowhead values across every MCP write tool', function (): void {
+    $creator = mcpUser('No arrowhead creator');
+    $board = mcpBoard($creator, 'No arrowhead board');
+    $admin = mcpCredential($creator, [OperatorAbility::McpAdmin->value]);
+    $arrowId = (string) Str::uuid7();
+    $updateArrowId = (string) Str::uuid7();
+    $slideArrowId = (string) Str::uuid7();
+
+    foreach ([AddElementsTool::class, AddSlideTool::class] as $tool) {
+        $property = resolve($tool)->toArray()['inputSchema']['properties']['elements']['items']['properties'];
+
+        expect($property['startArrowhead']['type'])->toBeArray()->toContain('null')
+            ->and($property['endArrowhead']['type'])->toBeArray()->toContain('null');
+    }
+
+    $patchProperty = resolve(UpdateElementsTool::class)->toArray()['inputSchema']['properties']['elements']['items']['properties'];
+    expect($patchProperty['startArrowhead']['type'])->toBeArray()->toContain('null')
+        ->and($patchProperty['endArrowhead']['type'])->toBeArray()->toContain('null');
+
+    callMcp('/mcp/write', 'add_elements', [
+        'id' => $board->id,
+        'elements' => [
+            [
+                'id' => $arrowId,
+                'type' => 'arrow',
+                'startArrowhead' => null,
+                'endArrowhead' => null,
+            ],
+            [
+                'id' => $updateArrowId,
+                'type' => 'arrow',
+                'startArrowhead' => 'bar',
+                'endArrowhead' => 'dot',
+            ],
+        ],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+
+    $arrow = collect($board->fresh()->scene['elements'])->firstWhere('id', $arrowId);
+    expect($arrow['startArrowhead'])->toBeNull()
+        ->and($arrow['endArrowhead'])->toBeNull();
+
+    callMcp('/mcp/write', 'add_slide', [
+        'id' => $board->id,
+        'title' => 'No arrowhead slide',
+        'elements' => [[
+            'id' => $slideArrowId,
+            'type' => 'arrow',
+            'startArrowhead' => null,
+            'endArrowhead' => null,
+        ]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+
+    $slideArrow = collect($board->fresh()->scene['elements'])->firstWhere('id', $slideArrowId);
+    expect($slideArrow['startArrowhead'])->toBeNull()
+        ->and($slideArrow['endArrowhead'])->toBeNull();
+
+    callMcp('/mcp/write', 'update_elements', [
+        'id' => $board->id,
+        'elements' => [[
+            'id' => $updateArrowId,
+            'startArrowhead' => null,
+            'endArrowhead' => null,
+        ]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+
+    $updatedArrow = collect($board->fresh()->scene['elements'])->firstWhere('id', $updateArrowId);
+    expect($updatedArrow['startArrowhead'])->toBeNull()
+        ->and($updatedArrow['endArrowhead'])->toBeNull();
+});
+
+it('derives MCP arrow dimensions from the point bounds', function (): void {
+    $creator = mcpUser('Arrow bounds creator');
+    $board = mcpBoard($creator, 'Arrow bounds board');
+    $admin = mcpCredential($creator, [OperatorAbility::McpAdmin->value]);
+    $arrowId = (string) Str::uuid7();
+    $slideArrowId = (string) Str::uuid7();
+
+    callMcp('/mcp/write', 'add_elements', [
+        'id' => $board->id,
+        'elements' => [[
+            'id' => $arrowId,
+            'type' => 'arrow',
+            'points' => [[0, 0], [620, 15]],
+        ]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+
+    $arrow = collect($board->fresh()->scene['elements'])->firstWhere('id', $arrowId);
+    expect((float) $arrow['width'])->toBe(620.0)
+        ->and((float) $arrow['height'])->toBe(15.0);
+
+    callMcp('/mcp/write', 'add_slide', [
+        'id' => $board->id,
+        'title' => 'Arrow bounds slide',
+        'elements' => [[
+            'id' => $slideArrowId,
+            'type' => 'arrow',
+            'points' => [[-20, 10], [90, -30]],
+        ]],
+    ], $admin)->assertOk()->assertJsonPath('result.isError', false);
+
+    $slideArrow = collect($board->fresh()->scene['elements'])->firstWhere('id', $slideArrowId);
+    expect((float) $slideArrow['width'])->toBe(110.0)
+        ->and((float) $slideArrow['height'])->toBe(40.0);
+});
+
 it('lists and gets only own direct and team shared boards', function (): void {
     $creator = mcpUser('MCP list creator');
     $recipient = mcpUser('MCP list recipient');
