@@ -59,27 +59,72 @@ it('lets every admitted BfC role create a UUIDv7 board through the Livewire page
         ->and($board->revision)->toBe(0);
 })->with(UserRole::cases());
 
-it('renders the board index and Draw navigation from the BfC dashboard', function (): void {
+it('places complete Draw navigation in the package sidebar and page content in main', function (string $route, string $pageMarker, ?string $currentRoute): void {
     $user = boardUser(UserRole::Member, 'Dashboard user');
     $board = Board::query()->create([
         'creator_id' => $user->id,
         'title' => 'Dashboard route board',
     ]);
+    $recipient = boardUser(UserRole::Member, 'Sidebar recipient');
+    $board->shares()->create([
+        'kind' => BoardShareKind::User,
+        'recipient_user_id' => $recipient->id,
+        'access' => ShareAccess::View,
+    ]);
+    $sharedBoard = Board::query()->create([
+        'creator_id' => $recipient->id,
+        'title' => 'Sidebar shared board',
+    ]);
+    $sharedBoard->shares()->create([
+        'kind' => BoardShareKind::User,
+        'recipient_user_id' => $user->id,
+        'access' => ShareAccess::View,
+    ]);
 
     $this->actingAs($user)->withSession(boardSession($user));
 
-    $this->get(route('bfc.dashboard'))
-        ->assertOk()
-        ->assertSee('data-testid="bfc-layout"', false)
-        ->assertSee('data-testid="draw-sidebar"', false)
-        ->assertSee('data-testid="draw-navigation"', false)
-        ->assertSee('data-testid="boards-list"', false)
-        ->assertSee('href="'.route('boards.index').'"', false)
-        ->assertSee('href="'.route('boards.shared').'"', false)
-        ->assertSee('href="'.route('board-shares.index').'"', false)
-        ->assertSee('href="'.route('bfc.ui.home').'"', false)
-        ->assertSee($board->title);
-});
+    $response = $this->get(route($route, $route === 'boards.show' ? $board : []))
+        ->assertOk();
+
+    $document = new DOMDocument;
+    $document->loadHTML($response->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+    $xpath = new DOMXPath($document);
+    $sidebar = '//*[@data-testid="bfc-sidebar"]//*[@data-testid="bfc-sidebar-slot"]//*[@data-testid="draw-sidebar"]';
+    $main = '//*[@data-testid="bfc-main"]';
+
+    expect($xpath->evaluate('count('.$sidebar.')'))->toBe(1.0)
+        ->and($xpath->evaluate('count(//*[@data-testid="draw-sidebar"])'))->toBe(1.0)
+        ->and($xpath->evaluate('count('.$sidebar.'//nav[@data-testid="draw-navigation"])'))->toBe(1.0)
+        ->and($xpath->evaluate('count('.$main.'//*[@data-testid="'.$pageMarker.'"])'))->toBe(1.0)
+        ->and($xpath->evaluate('count('.$main.'//*[@data-testid="about-excalidraw"])'))->toBe(1.0)
+        ->and($xpath->evaluate('count('.$main.'//*[@data-testid="draw-sidebar"])'))->toBe(0.0)
+        ->and($xpath->evaluate('string('.$main.')'))->toContain($route === 'boards.shared' ? $sharedBoard->title : $board->title);
+
+    $links = $xpath->query($sidebar.'//a');
+
+    expect(array_map(fn (DOMElement $link): string => $link->getAttribute('href'), iterator_to_array($links)))
+        ->toBe([
+            route('boards.index'),
+            '/',
+            route('boards.index'),
+            route('boards.shared'),
+            route('board-shares.index'),
+            route('boards.index').'#new-board',
+            route('bfc.ui.home'),
+        ])
+        ->and($xpath->evaluate('count('.$sidebar.'//a[@*[name()="wire:navigate"]])'))->toBe(5.0);
+
+    $activeLinks = $xpath->query($sidebar.'//a[@aria-current="page"]');
+
+    expect(array_map(fn (DOMElement $link): string => $link->getAttribute('href'), iterator_to_array($activeLinks)))
+        ->toBe($currentRoute === null ? [] : [route($currentRoute)]);
+})->with([
+    'dashboard' => ['bfc.dashboard', 'boards-list', 'boards.index'],
+    'boards' => ['boards.index', 'boards-list', 'boards.index'],
+    'shared boards' => ['boards.shared', 'shared-boards-list', 'boards.shared'],
+    'shares' => ['board-shares.index', 'my-shares-list', 'board-shares.index'],
+    'editor' => ['boards.show', 'editor-mount', null],
+]);
 
 it('keeps private boards hidden from an unrelated role on every board surface', function (UserRole $unrelatedRole): void {
     $creator = boardUser(UserRole::Member, 'Board creator');

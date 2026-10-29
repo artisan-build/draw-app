@@ -12,8 +12,8 @@
 @endpush
 
 <x-bfc-layout :title="filled($title) ? $title.' - Draw' : 'Draw'">
-    <div class="draw-shell" data-testid="draw-app-shell">
-        <aside class="draw-sidebar" data-testid="draw-sidebar">
+    <x-slot:sidebar>
+        <div class="draw-sidebar" data-testid="draw-sidebar">
             <a class="draw-brand" href="{{ route('boards.index') }}" wire:navigate>
                 <x-app-logo />
             </a>
@@ -36,8 +36,10 @@
             <a class="draw-settings" href="{{ route('bfc.ui.home') }}">
                 Settings
             </a>
-        </aside>
+        </div>
+    </x-slot:sidebar>
 
+    <div data-testid="draw-app-shell">
         <div class="draw-content" data-testid="draw-content">
             {{ $slot }}
 
