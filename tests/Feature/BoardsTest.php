@@ -59,7 +59,7 @@ it('lets every admitted BfC role create a UUIDv7 board through the Livewire page
         ->and($board->revision)->toBe(0);
 })->with(UserRole::cases());
 
-it('places complete Draw navigation in the package sidebar and page content in main', function (string $route, string $pageMarker, ?string $currentRoute): void {
+it('places board navigation in the package sidebar and page content in main', function (string $route, string $pageMarker, ?string $currentRoute): void {
     $user = boardUser(UserRole::Member, 'Dashboard user');
     $board = Board::query()->create([
         'creator_id' => $user->id,
@@ -105,14 +105,10 @@ it('places complete Draw navigation in the package sidebar and page content in m
     expect(array_map(fn (DOMElement $link): string => $link->getAttribute('href'), iterator_to_array($links)))
         ->toBe([
             route('boards.index'),
-            '/',
-            route('boards.index'),
             route('boards.shared'),
             route('board-shares.index'),
-            route('boards.index').'#new-board',
-            route('bfc.ui.home'),
         ])
-        ->and($xpath->evaluate('count('.$sidebar.'//a[@*[name()="wire:navigate"]])'))->toBe(5.0);
+        ->and($xpath->evaluate('count('.$sidebar.'//a[@*[name()="wire:navigate"]])'))->toBe(3.0);
 
     $activeLinks = $xpath->query($sidebar.'//a[@aria-current="page"]');
 
